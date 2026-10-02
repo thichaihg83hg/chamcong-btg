@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chấm công - Ban Tuyên giáo Tỉnh ủy Tuyên Quang</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+<style>
+:root{
+  --do:#C8102E; --do-dam:#9E0B23; --vang:#F5A623; --vang-nhat:#FFF4DA;
+  --navy:#0D1B2A; --nen:#FFFCF3; --ke:#E9E2D0; --ke-dam:#CDBF9F; --mo:#5B6472;
+  --nghi:#F1ECE0; --le:#FDE6BD; --chon:#DDE8F8; --chon-vien:#24518F;
+  --mau-ct:#C8102E; --mau-phep:#8A5A00; --mau-bhxh:#0E6B6B; --mau-khong:#6B7280;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:'Be Vietnam Pro',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:var(--navy);background:var(--nen);font-size:14px;line-height:1.45}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--chon-vien);outline-offset:2px}
+[hidden]{display:none!important}
+
+/* ---------- Đăng nhập ---------- */
+#manDangNhap{min-height:100vh;display:grid;place-items:center;padding:24px;background:linear-gradient(180deg,#fff 0,#fff 55%,var(--vang-nhat) 100%)}
+.the-dang-nhap{width:100%;max-width:380px;background:#fff;border:1px solid var(--ke);border-top:4px solid var(--do);border-radius:8px;padding:28px 28px 24px;box-shadow:0 8px 30px rgba(13,27,42,.08)}
+.the-dang-nhap .ban{color:var(--do);font-weight:600;font-size:13px}
+.the-dang-nhap h1{margin:2px 0 20px;font-size:24px;line-height:1.2}
+.truong{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.truong label{font-size:13px;font-weight:500;color:var(--mo)}
+.truong input,.truong select,.truong textarea{border:1px solid var(--ke-dam);border-radius:6px;padding:9px 11px;background:#fff;width:100%;font:inherit}
+.truong input:focus,.truong select:focus,.truong textarea:focus{border-color:var(--chon-vien);outline:none;box-shadow:0 0 0 3px rgba(36,81,143,.15)}
+.loi{color:var(--do);font-size:13px;min-height:20px;margin:4px 0 8px}
+
+/* ---------- Nút ---------- */
+.nut{border:1px solid transparent;border-radius:6px;padding:8px 14px;font-weight:600;white-space:nowrap}
+.nut.chinh{background:var(--do);color:#fff}
+.nut.chinh:hover{background:var(--do-dam)}
+.nut.phu{background:#fff;border-color:var(--ke-dam);color:var(--navy)}
+.nut.phu:hover{background:var(--vang-nhat)}
+.nut.nho{padding:5px 10px;font-size:13px}
+.nut.xoa{background:#fff;border-color:#E8B4BD;color:var(--do)}
+.nut:disabled{opacity:.5;cursor:not-allowed}
+.nut.rong{width:100%}
+
+/* ---------- Khung ứng dụng ---------- */
+header.dau{display:flex;align-items:center;gap:20px;padding:10px 24px;background:#fff;border-bottom:3px solid var(--do);flex-wrap:wrap}
+.ten-app .ban{font-size:12px;color:var(--do);font-weight:600}
+.ten-app .app{font-size:18px;font-weight:700;line-height:1.2}
+.chon-thang{display:flex;align-items:center;gap:4px;margin:0 auto}
+.chon-thang > button:not(.thang-hien){width:34px;height:34px;border-radius:50%;border:1px solid var(--ke-dam);background:#fff;font-size:18px;line-height:1}
+.chon-thang > button:not(.thang-hien):hover{background:var(--vang-nhat)}
+.thang-hien{display:flex;align-items:baseline;gap:8px;min-width:200px;justify-content:center;padding:0 6px;border:0;background:none;white-space:nowrap;border-radius:6px}
+.thang-hien:hover{background:var(--vang-nhat)}
+#nhanThang{font-size:26px;font-weight:700;color:var(--do);letter-spacing:-.01em}
+#nhanNam{font-size:18px;font-weight:500;color:var(--mo)}
+#chonThangAn{position:absolute;opacity:0;pointer-events:none;width:1px}
+.tai-khoan{display:flex;align-items:center;gap:8px}
+.tai-khoan .ten{font-size:13px;color:var(--mo);text-align:right;line-height:1.25}
+.tai-khoan .ten b{display:block;color:var(--navy);font-weight:600}
+
+nav.tabs{display:flex;align-items:center;gap:2px;padding:0 24px;background:#fff;border-bottom:1px solid var(--ke);overflow-x:auto}
+nav.tabs button{border:0;background:none;padding:11px 14px 9px;font-weight:500;color:var(--mo);border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button:hover{color:var(--navy)}
+nav.tabs button.dang-chon{color:var(--navy);font-weight:600;border-bottom-color:var(--vang)}
+.trang-thai-luu{margin-left:auto;font-size:13px;color:var(--mo);white-space:nowrap;padding-left:16px}
+.trang-thai-luu.loi-luu{color:var(--do);font-weight:600}
+main{padding:14px 24px 28px}
+
+/* ---------- Thanh công cụ lưới ---------- */
+.cong-cu{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:10px}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--ke-dam);background:#fff;border-radius:18px;padding:3px 10px 3px 3px;cursor:pointer}
+.chip:hover{background:var(--vang-nhat);border-color:var(--vang)}
+.chip .kh{min-width:30px;height:26px;padding:0 6px;border-radius:13px;background:var(--vang-nhat);display:grid;place-items:center;font-weight:700}
+.chip .phim{font-size:11px;color:var(--mo);border:1px solid var(--ke);border-radius:4px;padding:0 4px;background:#FBF8F0}
+.chip.xoa-o .kh{background:#F3F4F6;color:var(--mau-khong)}
+.goi-y{font-size:13px;color:var(--mo);margin:0 0 10px}
+.thanh-duoi{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:10px;min-height:36px;font-size:13px}
+.thanh-duoi .noi-dung{flex:1 1 320px}
+.chu-giai{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mo)}
+.chu-giai span::before{content:'';display:inline-block;width:12px;height:12px;border:1px solid var(--ke-dam);border-radius:2px;vertical-align:-2px;margin-right:5px}
+.chu-giai .cg-nghi::before{background:var(--nghi)}
+.chu-giai .cg-le::before{background:var(--le)}
+.chu-giai .cg-ghi::before{background:linear-gradient(225deg,var(--do) 0 30%,#fff 30%)}
+
+/* ---------- Lưới chấm công ---------- */
+.khung-luoi{overflow:auto;max-height:calc(100vh - 300px);min-height:300px;border:1px solid var(--ke-dam);background:#fff;border-radius:6px}
+table.luoi{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums;user-select:none;-webkit-user-select:none}
+.luoi th,.luoi td{border-right:1px solid var(--ke);border-bottom:1px solid var(--ke);padding:0;text-align:center;height:30px}
+.luoi thead th{position:sticky;top:0;z-index:3;background:#fff;font-weight:500;height:46px;border-bottom:2px solid var(--ke-dam)}
+.luoi .c-stt{position:sticky;left:0;z-index:2;width:38px;min-width:38px;background:#fff;color:var(--mo);font-size:12px}
+.luoi .c-ten{position:sticky;left:38px;z-index:2;min-width:200px;max-width:240px;text-align:left;padding:0 10px;background:#fff;border-right:2px solid var(--ke-dam);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.luoi .c-ten small{color:var(--mo);font-size:11px;margin-left:4px}
+.luoi thead .c-stt,.luoi thead .c-ten{z-index:5}
+.luoi thead .c-ten{cursor:default;font-weight:600}
+th.ngay{width:36px;min-width:36px;cursor:pointer}
+th.ngay .so{display:block;font-weight:600;font-size:13px;line-height:1.1}
+th.ngay .thu{display:block;font-size:11px;color:var(--mo);line-height:1.1}
+th.ngay:hover{background:var(--vang-nhat)}
+td.o{width:36px;min-width:36px;cursor:cell;font-weight:600;font-size:13px;position:relative}
+.lw-nghi{background:var(--nghi)!important}
+.lw-le{background:var(--le)!important}
+.luoi thead th.lw-nghi .so,.luoi thead th.lw-le .so{color:var(--do)}
+td.kh-ct{color:var(--mau-ct)}
+td.kh-phep{color:var(--mau-phep)}
+td.kh-bhxh{color:var(--mau-bhxh)}
+td.kh-khong{color:var(--mau-khong)}
+td.o.co-ghi::after{content:'';position:absolute;top:0;right:0;border-style:solid;border-width:0 7px 7px 0;border-color:transparent var(--do) transparent transparent}
+td.o.chon{background:var(--chon)!important}
+td.o.tieu-diem{box-shadow:inset 0 0 0 2px var(--chon-vien)}
+tr:hover td.c-ten,tr:hover td.c-stt{background:#FBF8F0}
+.luoi .tong{min-width:66px;width:66px;background:#FBF8F0;font-weight:600;font-size:13px}
+.luoi thead .tong{font-size:11px;line-height:1.2;padding:2px 4px;font-weight:600;background:#FBF8F0}
+.luoi .tong.dau-tien{border-left:2px solid var(--ke-dam)}
+.luoi tfoot td{position:sticky;bottom:0;z-index:2;background:#FBF8F0;font-weight:600;border-top:2px solid var(--ke-dam)}
+.luoi tfoot .c-stt,.luoi tfoot .c-ten{z-index:4;background:#FBF8F0}
+.o input.sua-gio{position:absolute;inset:0;width:100%;height:100%;border:2px solid var(--chon-vien);text-align:center;font-weight:600;padding:0;background:#fff}
+.trong-luoi{padding:40px;text-align:center;color:var(--mo)}
+
+/* ---------- Bảng thường ---------- */
+.the{background:#fff;border:1px solid var(--ke);border-radius:8px;padding:18px 20px;margin-bottom:16px}
+.the h2{font-size:17px;margin:0 0 4px}
+.the .mo-ta{color:var(--mo);font-size:13px;margin:0 0 14px;max-width:72ch}
+table.bang{border-collapse:collapse;width:100%;font-size:13.5px}
+.bang th{text-align:left;font-weight:600;color:var(--mo);font-size:12.5px;border-bottom:2px solid var(--ke-dam);padding:8px}
+.bang td{border-bottom:1px solid var(--ke);padding:6px 8px;vertical-align:middle}
+.bang td.so{text-align:center;font-variant-numeric:tabular-nums}
+.bang input[type=text],.bang input[type=number],.bang input[type=email],.bang select{border:1px solid transparent;border-radius:4px;padding:5px 7px;width:100%;background:transparent}
+.bang input:hover,.bang select:hover{border-color:var(--ke)}
+.bang input:focus,.bang select:focus{border-color:var(--chon-vien);background:#fff;outline:none}
+.bang tr.da-sua td{background:#FFF9E8}
+.bang tr.ngung td{color:var(--mo)}
+.nhan-loai{display:inline-block;font-size:12px;padding:1px 8px;border-radius:10px;background:var(--le)}
+.nhan-loai.nghi_bu{background:var(--nghi)}
+.nhan-loai.lam_bu{background:#E3EEDF}
+.luoi-form{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px 14px;align-items:end}
+.luoi-form .rong-2{grid-column:span 2}
+.hang-nut{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.chu-nho{font-size:12.5px;color:var(--mo)}
+.hai-cot{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* ---------- Hộp thoại ---------- */
+dialog{border:0;border-radius:10px;padding:0;max-width:520px;width:calc(100% - 32px);box-shadow:0 20px 60px rgba(13,27,42,.25);color:var(--navy)}
+dialog::backdrop{background:rgba(13,27,42,.35)}
+.hop{padding:20px 22px}
+.hop h3{margin:0 0 4px;font-size:18px}
+.hop .mo-ta{color:var(--mo);font-size:13px;margin:0 0 14px}
+.hop .cuoi{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--navy);color:#fff;padding:10px 16px;border-radius:8px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:50;max-width:90vw}
+.toast.hien{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.loi{background:var(--do)}
+.dang-tai{padding:40px;text-align:center;color:var(--mo)}
+
+@media (max-width:760px){
+  header.dau{padding:10px 14px;gap:10px}
+  .chon-thang{order:3;width:100%;justify-content:center}
+  .tai-khoan .ten{display:none}
+  nav.tabs,main{padding-left:12px;padding-right:12px}
+  .khung-luoi{max-height:calc(100vh - 340px)}
+  .hai-cot{grid-template-columns:1fr}
+  .luoi .c-ten{min-width:140px;max-width:150px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ================= ĐĂNG NHẬP ================= -->
+<div id="manDangNhap" hidden>
+  <form class="the-dang-nhap" id="formDangNhap" autocomplete="on">
+    <div class="ban">Ban Tuyên giáo Tỉnh ủy Tuyên Quang</div>
+    <h1>Theo dõi chấm công</h1>
+    <div class="truong">
+      <label for="dnEmail">Email</label>
+      <input id="dnEmail" type="email" required autocomplete="username">
+    </div>
+    <div class="truong">
+      <label for="dnMatKhau">Mật khẩu</label>
+      <input id="dnMatKhau" type="password" required autocomplete="current-password">
+    </div>
+    <div class="loi" id="dnLoi" role="alert"></div>
+    <button class="nut chinh rong" type="submit" id="dnNut">Đăng nhập</button>
+  </form>
+</div>
+
+<!-- ================= ỨNG DỤNG ================= -->
+<div id="ungDung" hidden>
+  <header class="dau">
+    <div class="ten-app">
+      <div class="ban">Ban Tuyên giáo Tỉnh ủy Tuyên Quang</div>
+      <div class="app">Theo dõi chấm công</div>
+    </div>
+    <div class="chon-thang">
+      <button id="thangTruoc" type="button" aria-label="Tháng trước">&#8249;</button>
+      <button class="thang-hien" id="nutThang" type="button" title="Chọn tháng">
+        <span id="nhanThang">Tháng</span><span id="nhanNam"></span>
+      </button>
+      <input type="month" id="chonThangAn" tabindex="-1" aria-hidden="true">
+      <button id="thangSau" type="button" aria-label="Tháng sau">&#8250;</button>
+    </div>
+    <div class="tai-khoan">
+      <div class="ten"><b id="tenNguoiDung"></b><span id="vaiTroNguoiDung"></span></div>
+      <button class="nut chinh" id="btnXuat" type="button">Xuất Excel</button>
+      <button class="nut phu" id="btnDangXuat" type="button">Đăng xuất</button>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button type="button" data-tab="cong" class="dang-chon">Chấm công ngày</button>
+    <button type="button" data-tab="gio">Làm thêm giờ</button>
+    <button type="button" data-tab="ct">Công tác</button>
+    <button type="button" data-tab="le">Ngày lễ, nghỉ bù</button>
+    <button type="button" data-tab="canbo" data-quan-tri>Cán bộ</button>
+    <button type="button" data-tab="caidat" data-quan-tri>Cài đặt</button>
+    <span class="trang-thai-luu" id="trangThaiLuu"></span>
+  </nav>
+
+  <main>
+    <!-- Lưới dùng chung cho 2 tab chấm công ngày và làm thêm giờ -->
+    <section id="vungLuoi">
+      <div class="cong-cu" id="bangKyHieu"></div>
+      <p class="goi-y" id="goiY"></p>
+      <div class="khung-luoi" id="khungLuoi"><div class="dang-tai">Đang tải dữ liệu...</div></div>
+      <div class="thanh-duoi">
+        <div class="noi-dung" id="thongTinO"></div>
+        <div class="chu-giai">
+          <span class="cg-nghi">Thứ 7, Chủ nhật, nghỉ bù</span>
+          <span class="cg-le">Ngày lễ, Tết</span>
+          <span class="cg-ghi" id="cgGhi">Có ghi chú công tác</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="vungCT" hidden></section>
+    <section id="vungLe" hidden></section>
+    <section id="vungCanBo" hidden></section>
+    <section id="vungCaiDat" hidden></section>
+  </main>
+</div>
+
+<!-- Ghi chú công tác -->
+<dialog id="dlgCT">
+  <form class="hop" method="dialog" id="formCT">
+    <h3>Ghi chú công tác</h3>
+    <p class="mo-ta" id="ctMoTa"></p>
+    <div class="truong">
+      <label for="ctNoi">Nơi công tác</label>
+      <input id="ctNoi" type="text" maxlength="200" placeholder="Ví dụ: Hà Nội">
+    </div>
+    <div class="truong">
+      <label for="ctNoiDung">Nội dung công tác</label>
+      <textarea id="ctNoiDung" rows="3" maxlength="500" placeholder="Ví dụ: Dự tập huấn nghiệp vụ tuyên truyền"></textarea>
+    </div>
+    <div class="cuoi">
+      <button class="nut phu" value="boqua" type="submit">Để sau</button>
+      <button class="nut chinh" value="luu" type="submit">Lưu ghi chú</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- Xuất Excel -->
+<dialog id="dlgXuat">
+  <form class="hop" method="dialog" id="formXuat">
+    <h3>Xuất bảng chấm công</h3>
+    <p class="mo-ta" id="xuatMoTa"></p>
+    <div class="truong">
+      <label for="xNgayKy">Ngày ghi ở chân bảng</label>
+      <input id="xNgayKy" type="date">
+    </div>
+    <div class="truong">
+      <label for="xPhuTrach">Phụ trách bộ phận (bảng chấm công ngày)</label>
+      <input id="xPhuTrach" type="text" placeholder="Để trống thì in trống">
+    </div>
+    <div class="truong">
+      <label for="xXacNhan">Xác nhận của bộ phận có người làm thêm</label>
+      <input id="xXacNhan" type="text" placeholder="Để trống thì in trống">
+    </div>
+    <div class="truong">
+      <label for="xThuTruong">Thủ trưởng đơn vị</label>
+      <input id="xThuTruong" type="text" placeholder="Để trống thì in trống">
+    </div>
+    <div class="cuoi">
+      <button class="nut phu" value="huy" type="submit">Hủy</button>
+      <button class="nut chinh" value="xuat" type="submit">Tải file Excel</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/* =====================================================================
+   CẤU HÌNH: dán URL và anon key của project Supabase (project nuôi gà).
+   Lấy ở Project Settings > API (hoặc Data API) > Project URL và anon public key.
+   ===================================================================== */
+const SUPABASE_URL = 'https://gpnizzmjmkoepglmnwlk.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imdwbml6em1qbWtvZXBnbG1ud2xrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MTg1MTgsImV4cCI6MjEwNjI5NDUxOH0.s9asDgh7E7zbNgn4DB7IaPSb3T6KRbGPDfps9gALPc0';
+
+/* ==== BAT DAU LOGIC CHUNG (dùng cho cả giao diện và xuất Excel) ==== */
+const KY_HIEU = [
+  {k:'+',  ten:'Lương thời gian (đi làm)', phim:'1', nhom:'luong', lop:''},
+  {k:'CT', ten:'Đi công tác',              phim:'2', nhom:'luong', lop:'kh-ct'},
+  {k:'P',  ten:'Nghỉ phép',                phim:'3', nhom:'luong', lop:'kh-phep'},
+  {k:'H',  ten:'Hội nghị, học tập',        phim:'4', nhom:'luong', lop:'kh-phep'},
+  {k:'NB', ten:'Nghỉ bù',                  phim:'5', nhom:'luong', lop:'kh-phep'},
+  {k:'Ô',  ten:'Ốm, điều dưỡng',           phim:'6', nhom:'bhxh',  lop:'kh-bhxh'},
+  {k:'Cô', ten:'Con ốm',                   phim:'7', nhom:'bhxh',  lop:'kh-bhxh'},
+  {k:'TS', ten:'Thai sản',                 phim:'8', nhom:'bhxh',  lop:'kh-bhxh'},
+  {k:'T',  ten:'Tai nạn',                  phim:'9', nhom:'bhxh',  lop:'kh-bhxh'},
+  {k:'No', ten:'Nghỉ không lương',         phim:'0', nhom:'khong', lop:'kh-khong'},
+  {k:'N',  ten:'Ngừng việc',               phim:'',  nhom:'khong', lop:'kh-khong'},
+  {k:'LĐ', ten:'Lao động nghĩa vụ',        phim:'',  nhom:'luong', lop:'kh-phep'},
+];
+const KH_MAP = new Map(KY_HIEU.map(x => [x.k, x]));
+const THU = ['CN','T2','T3','T4','T5','T6','T7'];
+const THU_DAY_DU = ['Chủ nhật','thứ Hai','thứ Ba','thứ Tư','thứ Năm','thứ Sáu','thứ Bảy'];
+
+const pad = n => String(n).padStart(2, '0');
+const iso = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+const soNgayCua = (y, m) => new Date(y, m, 0).getDate();
+const thuCua = (y, m, d) => new Date(y, m - 1, d).getDay();
+const khoa = (id, ngay) => `${id}|${ngay}`;
+const so = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const dinhDangSo = n => n ? String(Math.round(n * 10) / 10).replace('.', ',') : '';
+
+// Ngày lễ cố định theo Bộ luật Lao động 2019 và Nghị quyết 28/2026/QH16 (24/11 từ năm 2026)
+function leCoDinh(y) {
+  const ds = [[1,1,'Tết Dương lịch'],[4,30,'Ngày Chiến thắng'],[5,1,'Ngày Quốc tế Lao động'],[9,2,'Quốc khánh']];
+  if (y >= 2026) ds.push([11,24,'Ngày Văn hóa Việt Nam']);
+  return ds.map(([m, d, ten]) => ({ngay: iso(y, m, d), ten, loai: 'le', coDinh: true}));
+}
+
+// leMap: Map 'YYYY-MM-DD' -> {ten, loai}. Trả về 'lam' | 'nghi' | 'le'
+function loaiNgay(y, m, d, leMap) {
+  const l = leMap.get(iso(y, m, d));
+  if (l) {
+    if (l.loai === 'le') return 'le';
+    if (l.loai === 'nghi_bu') return 'nghi';
+    if (l.loai === 'lam_bu') return 'lam';
+  }
+  const t = thuCua(y, m, d);
+  return (t === 0 || t === 6) ? 'nghi' : 'lam';
+}
+
+function tongCong(id, y, m, cc) {
+  const r = {luong: 0, khong: 0, bhxh: 0};
+  for (let d = 1; d <= soNgayCua(y, m); d++) {
+    const o = cc.get(khoa(id, iso(y, m, d)));
+    const kh = o && o.ky_hieu && KH_MAP.get(o.ky_hieu);
+    if (kh) r[kh.nhom]++;
+  }
+  return r;
+}
+
+function tongGio(id, y, m, cc, leMap) {
+  const r = {lam: 0, nghi: 0, le: 0, dem: 0};
+  for (let d = 1; d <= soNgayCua(y, m); d++) {
+    const o = cc.get(khoa(id, iso(y, m, d)));
+    if (!o) continue;
+    r[loaiNgay(y, m, d, leMap)] += so(o.gio_them);
+    r.dem += so(o.gio_dem);
+  }
+  return r;
+}
+
+function hienGio(o) {
+  if (!o) return '';
+  const a = so(o.gio_them), b = so(o.gio_dem);
+  if (!a && !b) return '';
+  return (a ? dinhDangSo(a) : '0') + (b ? '+' + dinhDangSo(b) + 'đ' : '');
+}
+
+// "2" | "2,5" | "2+1" | "2+1đ" | "+3đ"  ->  {them, dem}  (null nếu sai)
+function docGio(s) {
+  s = String(s || '').trim().toLowerCase().replace(/,/g, '.').replace(/\s+/g, '');
+  if (!s) return {them: 0, dem: 0};
+  const m = s.match(/^(\d+(?:\.\d+)?)?(?:\+(\d+(?:\.\d+)?)[đd]?)?$/);
+  if (!m || (m[1] === undefined && m[2] === undefined)) return null;
+  const them = m[1] ? Number(m[1]) : 0, dem = m[2] ? Number(m[2]) : 0;
+  if (them > 24 || dem > 24 || them + dem > 24) return null;
+  return {them: Math.round(them * 10) / 10, dem: Math.round(dem * 10) / 10};
+}
+
+// Gom các ngày CT liền nhau của từng người thành đợt công tác
+function cacDotCongTac(canBo, y, m, cc) {
+  const kq = [];
+  const soNgay = soNgayCua(y, m);
+  for (const cb of canBo) {
+    let dot = null;
+    for (let d = 1; d <= soNgay + 1; d++) {
+      const o = d <= soNgay ? cc.get(khoa(cb.id, iso(y, m, d))) : null;
+      const laCT = o && o.ky_hieu === 'CT';
+      const noi = laCT ? (o.noi_cong_tac || '') : '';
+      const nd = laCT ? (o.noi_dung_cong_tac || '') : '';
+      if (dot && laCT && dot.noi === noi && dot.nd === nd) { dot.den = d; continue; }
+      if (dot) { kq.push(dot); dot = null; }
+      if (laCT) dot = {cb, tu: d, den: d, noi, nd};
+    }
+  }
+  return kq;
+}
+
+/* ---------- Xuất Excel (ExcelJS) ---------- */
+// D = {nam, thang, canBo, cc, leMap, caiDat, ky:{ngayKy:'YYYY-MM-DD', phuTrach, xacNhan, thuTruong}}
+async function taoFileExcel(ExcelJS, D) {
+  const {nam: y, thang: m, canBo, cc, leMap, caiDat: cd, ky} = D;
+  const soNgay = soNgayCua(y, m);
+  const wb = new ExcelJS.Workbook();
+  wb.creator = 'Phần mềm chấm công - Ban Tuyên giáo Tỉnh ủy';
+  const FONT = 'Times New Roman';
+  const vien = {top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+  const nen = argb => ({type:'pattern', pattern:'solid', fgColor:{argb}});
+  const NEN_NGHI = 'FFEDEDED', NEN_LE = 'FFFDE6BD', NEN_KHONG = 'FFBFBFBF';
+  const [ky_y, ky_m, ky_d] = (ky.ngayKy || '').split('-');
+  const dongNgayKy = ky.ngayKy
+    ? `${cd.dia_danh || 'Tuyên Quang'}, ngày ${Number(ky_d)} tháng ${Number(ky_m)} năm ${ky_y}`
+    : `${cd.dia_danh || 'Tuyên Quang'}, ngày ..... tháng ..... năm ${y}`;
+
+  function taoSheet(tenSheet, cfg) {
+    const soCotTong = cfg.cotTong.length;
+    const cotCuoi = 2 + 31 + soCotTong;
+    const ws = wb.addWorksheet(tenSheet, {
+      pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+        margins: {left: .25, right: .25, top: .4, bottom: .4, header: .2, footer: .2},
+        horizontalCentered: true, printTitlesRow: '7:9'},
+      views: [{state: 'frozen', xSplit: 2, ySplit: 9}],
+    });
+    ws.getColumn(1).width = 4.5;
+    ws.getColumn(2).width = 24;
+    for (let c = 3; c <= 33; c++) ws.getColumn(c).width = cfg.rongNgay;
+    for (let c = 34; c <= cotCuoi; c++) ws.getColumn(c).width = 9.5;
+
+    const o = (r, c, v, st = {}) => {
+      const cell = ws.getCell(r, c);
+      if (v !== undefined && v !== null && v !== '') cell.value = v;
+      cell.font = {name: FONT, size: st.size || 11, bold: !!st.bold, italic: !!st.italic};
+      cell.alignment = {horizontal: st.h || 'center', vertical: 'middle', wrapText: st.wrap !== false};
+      if (st.vien) cell.border = vien;
+      if (st.nen) cell.fill = nen(st.nen);
+      return cell;
+    };
+    const gop = (r1, c1, r2, c2, v, st) => { ws.mergeCells(r1, c1, r2, c2); return o(r1, c1, v, st); };
+
+    // Đầu bảng
+    const cotMau = cotCuoi - 11;
+    gop(1, 1, 1, 14, `Đơn vị: ${cd.ten_don_vi || ''}`, {h: 'left', bold: true, wrap: false});
+    gop(2, 1, 2, 14, `Bộ phận: ${cd.bo_phan || ''}`, {h: 'left', bold: true, wrap: false});
+    gop(3, 1, 3, 14, `Mã QHNS: ${cd.ma_qhns || ''}`, {h: 'left', bold: true, wrap: false});
+    gop(1, cotMau, 1, cotCuoi, `Mẫu số: ${cfg.mauSo}`, {bold: true});
+    gop(2, cotMau, 3, cotCuoi, '(Ban hành kèm theo Thông tư số 107/2017/TT-BTC ngày 10/10/2017 của Bộ Tài chính)', {italic: true, size: 10});
+    ws.getRow(2).height = 16; ws.getRow(3).height = 16;
+    gop(4, 1, 4, cotCuoi, cfg.tieuDe, {bold: true, size: 14});
+    ws.getRow(4).height = 24;
+    gop(5, 1, 5, cotCuoi, `Tháng ${m} năm ${y}`, {italic: true, size: 12});
+
+    // Tiêu đề cột: dòng 7-9
+    gop(7, 1, 8, 1, 'STT', {bold: true, vien: true});
+    gop(7, 2, 8, 2, 'Họ và tên', {bold: true, vien: true});
+    gop(7, 3, 7, 33, 'Ngày trong tháng', {bold: true, vien: true});
+    gop(7, 34, 7, cotCuoi, cfg.tenNhomTong, {bold: true, vien: true});
+    for (let d = 1; d <= 31; d++) {
+      const c = 2 + d;
+      if (d <= soNgay) {
+        const l = loaiNgay(y, m, d, leMap);
+        const mau = l === 'le' ? NEN_LE : (l === 'nghi' ? NEN_NGHI : undefined);
+        o(8, c, THU[thuCua(y, m, d)], {size: 9, vien: true, nen: mau, bold: l !== 'lam'});
+      } else {
+        o(8, c, '', {vien: true, nen: NEN_KHONG});
+      }
+    }
+    cfg.cotTong.forEach((t, i) => o(8, 34 + i, t, {size: 9, bold: true, vien: true}));
+    ws.getRow(8).height = cfg.caoDongTieuDe;
+    o(9, 1, 'A', {size: 9, vien: true, italic: true});
+    o(9, 2, 'B', {size: 9, vien: true, italic: true});
+    for (let c = 3; c <= cotCuoi; c++) o(9, c, c - 2, {size: 9, vien: true, italic: true});
+
+    // Dữ liệu
+    let r = 10;
+    const tongCot = new Array(soCotTong).fill(0);
+    const tongNgay = new Array(32).fill(0);
+    canBo.forEach((cb, i) => {
+      o(r, 1, i + 1, {vien: true});
+      o(r, 2, cb.ho_ten, {h: 'left', vien: true, wrap: false});
+      for (let d = 1; d <= 31; d++) {
+        const c = 2 + d;
+        if (d > soNgay) { o(r, c, '', {vien: true, nen: NEN_KHONG}); continue; }
+        const l = loaiNgay(y, m, d, leMap);
+        const mau = l === 'le' ? NEN_LE : (l === 'nghi' ? NEN_NGHI : undefined);
+        const v = cfg.giaTriO(cc.get(khoa(cb.id, iso(y, m, d))));
+        o(r, c, v.hien, {vien: true, nen: mau, size: 10});
+        tongNgay[d] += v.dem || 0;
+      }
+      const t = cfg.tongHang(cb);
+      t.forEach((v, j) => { tongCot[j] += v; o(r, 34 + j, v || '', {vien: true, bold: true}); });
+      ws.getRow(r).height = 18;
+      r++;
+    });
+    // Dòng cộng
+    o(r, 1, '', {vien: true});
+    o(r, 2, 'Cộng', {vien: true, bold: true});
+    for (let d = 1; d <= 31; d++) {
+      const c = 2 + d;
+      o(r, c, d <= soNgay && cfg.congNgay && tongNgay[d] ? Math.round(tongNgay[d] * 10) / 10 : '',
+        {vien: true, size: 9, bold: true, nen: d > soNgay ? NEN_KHONG : undefined});
+    }
+    tongCot.forEach((v, j) => o(r, 34 + j, v ? Math.round(v * 10) / 10 : '', {vien: true, bold: true}));
+    ws.getRow(r).height = 18;
+
+    // Chân bảng: ngày + 3 ô ký
+    r += 2;
+    gop(r, 22, r, cotCuoi, dongNgayKy, {italic: true});
+    r++;
+    const khoi = [[1, 10], [11, 23], [24, cotCuoi]];
+    cfg.chuKy.forEach((ck, i) => {
+      const [c1, c2] = khoi[i];
+      gop(r, c1, r, c2, ck.chucDanh, {bold: true});
+      gop(r + 1, c1, r + 1, c2, ck.ghiChu, {italic: true, size: 10});
+      gop(r + 6, c1, r + 6, c2, ck.ten || '', {bold: true});
+    });
+    ws.getRow(r).height = 18;
+    r += 8;
+
+    if (cfg.chuGiai) {
+      gop(r, 1, r, 14, 'Ký hiệu chấm công:', {h: 'left', bold: true, wrap: false});
+      r++;
+      const ds = KY_HIEU.map(x => `${x.ten}: ${x.k}`);
+      const moiCot = Math.ceil(ds.length / 3);
+      for (let i = 0; i < moiCot; i++) {
+        [0, 1, 2].forEach(j => {
+          const s = ds[j * moiCot + i];
+          if (!s) return;
+          const c1 = [2, 13, 24][j];
+          gop(r, c1, r, c1 + 10, '- ' + s, {h: 'left', size: 10, wrap: false});
+        });
+        r++;
+      }
+    }
+    return ws;
+  }
+
+  // Sheet 1: chấm công ngày (C01-HD)
+  taoSheet(`Chấm công T${m}`, {
+    mauSo: 'C01-HD', tieuDe: 'BẢNG CHẤM CÔNG', tenNhomTong: 'Quy ra công', rongNgay: 3.6, caoDongTieuDe: 66,
+    cotTong: ['Số công hưởng lương thời gian', 'Số công nghỉ không lương', 'Số công hưởng BHXH'],
+    giaTriO: o => ({hien: (o && o.ky_hieu) || ''}),
+    tongHang: cb => { const t = tongCong(cb.id, y, m, cc); return [t.luong, t.khong, t.bhxh]; },
+    congNgay: false, chuGiai: true,
+    chuKy: [
+      {chucDanh: 'Người chấm công', ghiChu: '(Ký, họ tên)', ten: cd.nguoi_cham_cong},
+      {chucDanh: 'Phụ trách bộ phận', ghiChu: '(Ký, họ tên)', ten: ky.phuTrach},
+      {chucDanh: 'Thủ trưởng đơn vị', ghiChu: '(Ký, họ tên, đóng dấu)', ten: ky.thuTruong},
+    ],
+  });
+
+  // Sheet 2: làm thêm giờ (C09-HD)
+  taoSheet(`Làm thêm giờ T${m}`, {
+    mauSo: 'C09-HD', tieuDe: 'BẢNG CHẤM CÔNG LÀM THÊM GIỜ', tenNhomTong: 'Cộng số giờ làm thêm', rongNgay: 4.2, caoDongTieuDe: 78,
+    cotTong: ['Số giờ của ngày làm việc', 'Số giờ của ngày nghỉ (thứ 7, chủ nhật)', 'Số giờ của ngày lễ, tết', 'Số giờ làm đêm'],
+    giaTriO: o => ({hien: hienGio(o), dem: o ? so(o.gio_them) + so(o.gio_dem) : 0}),
+    tongHang: cb => { const t = tongGio(cb.id, y, m, cc, leMap); return [t.lam, t.nghi, t.le, t.dem]; },
+    congNgay: true, chuGiai: false,
+    chuKy: [
+      {chucDanh: 'Người chấm công', ghiChu: '(Ký, họ tên)', ten: cd.nguoi_cham_cong},
+      {chucDanh: 'Xác nhận của bộ phận có người làm thêm', ghiChu: '(Ký, họ tên)', ten: ky.xacNhan},
+      {chucDanh: 'Thủ trưởng đơn vị', ghiChu: '(Ký, họ tên, đóng dấu)', ten: ky.thuTruong},
+    ],
+  });
+
+  // Sheet 3: tổng hợp công tác
+  const ws3 = wb.addWorksheet(`Công tác T${m}`, {pageSetup: {paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0}});
+  [5, 26, 22, 14, 8, 28, 44].forEach((w, i) => ws3.getColumn(i + 1).width = w);
+  const f = (bold, size = 12, italic = false) => ({name: FONT, size, bold, italic});
+  ws3.mergeCells(1, 1, 1, 7); ws3.getCell(1, 1).value = `Đơn vị: ${cd.ten_don_vi || ''} - ${cd.bo_phan || ''}`; ws3.getCell(1, 1).font = f(true, 11);
+  ws3.mergeCells(3, 1, 3, 7); ws3.getCell(3, 1).value = 'TỔNG HỢP CÁN BỘ ĐI CÔNG TÁC';
+  ws3.getCell(3, 1).font = f(true, 14); ws3.getCell(3, 1).alignment = {horizontal: 'center'};
+  ws3.mergeCells(4, 1, 4, 7); ws3.getCell(4, 1).value = `Tháng ${m} năm ${y}`;
+  ws3.getCell(4, 1).font = f(false, 12, true); ws3.getCell(4, 1).alignment = {horizontal: 'center'};
+  const tieuDe3 = ['STT', 'Họ và tên', 'Chức vụ', 'Thời gian', 'Số ngày', 'Nơi công tác', 'Nội dung công tác'];
+  tieuDe3.forEach((t, i) => {
+    const c = ws3.getCell(6, i + 1); c.value = t; c.font = f(true, 11); c.border = vien;
+    c.alignment = {horizontal: 'center', vertical: 'middle', wrapText: true};
+  });
+  const dots = cacDotCongTac(canBo, y, m, cc);
+  dots.forEach((dt, i) => {
+    const tg = dt.tu === dt.den ? `${pad(dt.tu)}/${pad(m)}` : `${pad(dt.tu)}/${pad(m)} - ${pad(dt.den)}/${pad(m)}`;
+    const v = [i + 1, dt.cb.ho_ten, dt.cb.chuc_vu || '', tg, dt.den - dt.tu + 1, dt.noi, dt.nd];
+    v.forEach((x, j) => {
+      const c = ws3.getCell(7 + i, j + 1); c.value = x; c.font = f(false, 11); c.border = vien;
+      c.alignment = {horizontal: [0, 3, 4].includes(j) ? 'center' : 'left', vertical: 'middle', wrapText: true};
+    });
+  });
+  if (!dots.length) {
+    ws3.mergeCells(7, 1, 7, 7); const c = ws3.getCell(7, 1);
+    c.value = 'Trong tháng không có cán bộ đi công tác.'; c.font = f(false, 11, true); c.alignment = {horizontal: 'center'};
+  }
+
+  return wb.xlsx.writeBuffer();
+}
+/* ==== HET LOGIC CHUNG ==== */
+
+/* =====================================================================
+   GIAO DIỆN
+   ===================================================================== */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const homNay = new Date();
+
+const S = {
+  sb: null, email: '', hoTen: '', vaiTro: null,
+  nam: homNay.getFullYear(), thang: homNay.getMonth() + 1,
+  tab: 'cong',
+  canBo: [],            // toàn bộ cán bộ
+  dsHien: [],           // cán bộ hiện trên lưới tháng này
+  cc: new Map(),        // dữ liệu chấm công tháng đang xem
+  leNam: new Map(),     // ngày lễ cả năm đang xem (cố định + thêm tay)
+  leNamDaTai: null,
+  caiDat: {},
+  sel: null,            // {r0,d0,r1,d1}  r: chỉ số hàng, d: ngày
+  keo: false,
+  oEl: [],              // oEl[r][d] = td
+  choLuu: new Map(),
+  henLuu: null,
+  dangLuu: false,
+  ctCho: [],
+};
+const laQuanTri = () => S.vaiTro === 'quan_tri';
+
+function thongBao(msg, loi = false) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.toggle('loi', loi);
+  t.classList.add('hien');
+  clearTimeout(thongBao._h);
+  thongBao._h = setTimeout(() => t.classList.remove('hien'), loi ? 5000 : 2600);
+}
+
+/* ---------- Khởi động & đăng nhập ---------- */
+async function khoiDong() {
+  if (SUPABASE_URL.includes('THAY_') || SUPABASE_KEY.includes('THAY_')) {
+    $('manDangNhap').hidden = false;
+    $('dnLoi').textContent = 'Chưa cấu hình Supabase: mở file index.html, điền SUPABASE_URL và SUPABASE_KEY.';
+    $('dnNut').disabled = true;
+    return;
+  }
+  S.sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const {data} = await S.sb.auth.getSession();
+  if (data.session) await vaoUngDung(data.session.user);
+  else $('manDangNhap').hidden = false;
+}
+
+$('formDangNhap').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('dnLoi').textContent = '';
+  $('dnNut').disabled = true; $('dnNut').textContent = 'Đang đăng nhập...';
+  const {data, error} = await S.sb.auth.signInWithPassword({
+    email: $('dnEmail').value.trim(), password: $('dnMatKhau').value,
+  });
+  $('dnNut').disabled = false; $('dnNut').textContent = 'Đăng nhập';
+  if (error) {
+    $('dnLoi').textContent = /invalid/i.test(error.message) ? 'Sai email hoặc mật khẩu.' : 'Không đăng nhập được: ' + error.message;
+    return;
+  }
+  await vaoUngDung(data.user);
+});
+
+async function vaoUngDung(user) {
+  S.email = user.email;
+  const {data, error} = await S.sb.from('cc_nguoi_dung').select('*').ilike('email', user.email).maybeSingle();
+  if (error || !data) {
+    await S.sb.auth.signOut();
+    $('ungDung').hidden = true;
+    $('manDangNhap').hidden = false;
+    $('dnLoi').textContent = error
+      ? 'Không đọc được quyền truy cập: ' + error.message
+      : `Tài khoản ${user.email} chưa được cấp quyền dùng phần mềm chấm công.`;
+    return;
+  }
+  S.vaiTro = data.vai_tro;
+  S.hoTen = data.ho_ten || user.email;
+  $('tenNguoiDung').textContent = S.hoTen;
+  $('vaiTroNguoiDung').textContent = laQuanTri() ? 'Quản trị' : 'Người chấm công';
+  document.querySelectorAll('[data-quan-tri]').forEach(b => b.hidden = !laQuanTri());
+  $('manDangNhap').hidden = true;
+  $('ungDung').hidden = false;
+  veBangKyHieu();
+  await taiCaiDat();
+  await taiCanBo();
+  await taiThang();
+}
+
+$('btnDangXuat').addEventListener('click', async () => {
+  if (S.choLuu.size) await luuNgay();
+  await S.sb.auth.signOut();
+  location.reload();
+});
+
+/* ---------- Tải dữ liệu ---------- */
+async function taiCaiDat() {
+  const {data, error} = await S.sb.from('cc_cai_dat').select('*');
+  if (error) return thongBao('Không tải được cài đặt: ' + error.message, true);
+  S.caiDat = Object.fromEntries((data || []).map(x => [x.khoa, x.gia_tri || '']));
+}
+
+async function taiCanBo() {
+  const {data, error} = await S.sb.from('cc_can_bo').select('*').order('stt').order('ho_ten');
+  if (error) return thongBao('Không tải được danh sách cán bộ: ' + error.message, true);
+  S.canBo = data || [];
+}
+
+async function taiNgayLe(nam) {
+  const {data, error} = await S.sb.from('cc_ngay_le').select('*')
+    .gte('ngay', `${nam}-01-01`).lte('ngay', `${nam}-12-31`).order('ngay');
+  if (error) thongBao('Không tải được ngày lễ: ' + error.message, true);
+  const m = new Map();
+  leCoDinh(nam).forEach(x => m.set(x.ngay, x));
+  (data || []).forEach(x => m.set(x.ngay, {...x, coDinh: false}));
+  S.leNam = m;
+  S.leNamDaTai = nam;
+}
+
+async function taiThang() {
+  if (S.choLuu.size) await luuNgay();
+  capNhatNhanThang();
+  $('khungLuoi').innerHTML = '<div class="dang-tai">Đang tải dữ liệu...</div>';
+  const y = S.nam, m = S.thang;
+  if (S.leNamDaTai !== y) await taiNgayLe(y);
+  const tu = iso(y, m, 1), den = iso(y, m, soNgayCua(y, m));
+  const tatCa = [];
+  for (let from = 0; ; from += 1000) {
+    const {data, error} = await S.sb.from('cc_cham_cong').select('*')
+      .gte('ngay', tu).lte('ngay', den).range(from, from + 999);
+    if (error) { thongBao('Không tải được dữ liệu chấm công: ' + error.message, true); break; }
+    tatCa.push(...data);
+    if (data.length < 1000) break;
+  }
+  S.cc = new Map(tatCa.map(o => [khoa(o.can_bo_id, o.ngay), o]));
+  const coDuLieu = new Set(tatCa.filter(o => o.ky_hieu || so(o.gio_them) || so(o.gio_dem)).map(o => o.can_bo_id));
+  S.dsHien = S.canBo.filter(cb => cb.dang_lam_viec || coDuLieu.has(cb.id));
+  S.sel = null;
+  veTab();
+}
+
+function capNhatNhanThang() {
+  $('nhanThang').textContent = `Tháng ${S.thang}`;
+  $('nhanNam').textContent = S.nam;
+  $('chonThangAn').value = `${S.nam}-${pad(S.thang)}`;
+}
+
+function doiThang(buoc) {
+  let m = S.thang + buoc, y = S.nam;
+  if (m < 1) { m = 12; y--; }
+  if (m > 12) { m = 1; y++; }
+  S.thang = m; S.nam = y;
+  taiThang();
+}
+$('thangTruoc').addEventListener('click', () => doiThang(-1));
+$('thangSau').addEventListener('click', () => doiThang(1));
+$('nutThang').addEventListener('click', () => {
+  const inp = $('chonThangAn');
+  if (inp.showPicker) { try { inp.showPicker(); return; } catch (e) {} }
+  const s = prompt('Nhập tháng cần xem (tháng/năm), ví dụ 11/2026', `${S.thang}/${S.nam}`);
+  const mm = s && s.match(/^\s*(\d{1,2})\s*\/\s*(\d{4})\s*$/);
+  if (mm && +mm[1] >= 1 && +mm[1] <= 12) { S.thang = +mm[1]; S.nam = +mm[2]; taiThang(); }
+});
+$('chonThangAn').addEventListener('change', e => {
+  const [y, m] = e.target.value.split('-').map(Number);
+  if (y && m) { S.nam = y; S.thang = m; taiThang(); }
+});
+
+/* ---------- Tab ---------- */
+document.querySelectorAll('nav.tabs button').forEach(b => b.addEventListener('click', () => {
+  S.tab = b.dataset.tab;
+  document.querySelectorAll('nav.tabs button').forEach(x => x.classList.toggle('dang-chon', x === b));
+  dongSuaGio(true);
+  veTab();
+}));
+
+function veTab() {
+  const t = S.tab;
+  $('vungLuoi').hidden = !(t === 'cong' || t === 'gio');
+  $('vungCT').hidden = t !== 'ct';
+  $('vungLe').hidden = t !== 'le';
+  $('vungCanBo').hidden = t !== 'canbo';
+  $('vungCaiDat').hidden = t !== 'caidat';
+  if (t === 'cong' || t === 'gio') veLuoi();
+  else if (t === 'ct') veCongTac();
+  else if (t === 'le') veNgayLe();
+  else if (t === 'canbo') veCanBo();
+  else if (t === 'caidat') veCaiDat();
+}
+
+/* ---------- Bảng ký hiệu ---------- */
+function veBangKyHieu() {
+  $('bangKyHieu').innerHTML = KY_HIEU.map(x =>
+    `<button type="button" class="chip" data-kh="${esc(x.k)}" title="${esc(x.ten)}">
+       <span class="kh ${x.lop}">${esc(x.k)}</span>${esc(x.ten)}${x.phim ? ` <span class="phim">${x.phim}</span>` : ''}
+     </button>`).join('') +
+    `<button type="button" class="chip xoa-o" data-kh=""><span class="kh">✕</span>Xóa ô <span class="phim">Del</span></button>`;
+  $('bangKyHieu').addEventListener('mousedown', e => e.preventDefault());
+  $('bangKyHieu').addEventListener('click', e => {
+    const b = e.target.closest('.chip');
+    if (!b) return;
+    if (!S.sel) return thongBao('Chọn ô trên bảng trước, rồi bấm ký hiệu.');
+    apKyHieu(b.dataset.kh || null);
+  });
+}
+
+/* ---------- Lưới ---------- */
+function veLuoi() {
+  const y = S.nam, m = S.thang, soNgay = soNgayCua(y, m), gio = S.tab === 'gio';
+  $('bangKyHieu').hidden = gio;
+  $('cgGhi').hidden = gio;
+  $('goiY').innerHTML = gio
+    ? 'Chọn ô rồi gõ số giờ làm thêm, Enter để lưu. Có làm đêm thì gõ thêm dấu cộng, ví dụ <b>2+3</b> là 2 giờ làm thêm thường và 3 giờ làm đêm. Kéo chuột chọn nhiều ô để nhập cùng lúc.'
+    : 'Bấm vào ô (hoặc kéo chuột chọn nhiều ô) rồi bấm ký hiệu hoặc phím số. Bấm tên cán bộ để chọn cả hàng, bấm ngày để chọn cả cột. Khi chấm nhiều ô một lúc, thứ 7, Chủ nhật và ngày lễ được bỏ qua (trừ ký hiệu CT).';
+
+  if (!S.dsHien.length) {
+    $('khungLuoi').innerHTML = '<div class="trong-luoi">Chưa có cán bộ nào trong danh sách. ' +
+      (laQuanTri() ? 'Vào tab Cán bộ để thêm.' : 'Nhờ quản trị thêm danh sách cán bộ.') + '</div>';
+    S.oEl = []; return;
+  }
+
+  const loai = [];
+  let h = '<table class="luoi"><thead><tr><th class="c-stt">TT</th><th class="c-ten">Họ và tên</th>';
+  for (let d = 1; d <= soNgay; d++) {
+    loai[d] = loaiNgay(y, m, d, S.leNam);
+    const le = S.leNam.get(iso(y, m, d));
+    const tieuDe = `${THU_DAY_DU[thuCua(y, m, d)]} ${pad(d)}/${pad(m)}${le ? ' - ' + le.ten : ''}. Bấm để chọn cả cột.`;
+    h += `<th class="ngay lw-${loai[d]}" data-d="${d}" title="${esc(tieuDe)}"><span class="so">${d}</span><span class="thu">${THU[thuCua(y, m, d)]}</span></th>`;
+  }
+  const cotTong = gio ? ['Ngày thường', 'T7, CN', 'Lễ, Tết', 'Làm đêm'] : ['Hưởng lương', 'Không lương', 'BHXH'];
+  cotTong.forEach((t, i) => h += `<th class="tong${i ? '' : ' dau-tien'}">${t}</th>`);
+  h += '</tr></thead><tbody>';
+  S.dsHien.forEach((cb, r) => {
+    h += `<tr><td class="c-stt">${r + 1}</td><td class="c-ten" data-r="${r}" title="${esc(cb.ho_ten + (cb.chuc_vu ? ' - ' + cb.chuc_vu : ''))}. Bấm để chọn cả hàng.">${esc(cb.ho_ten)}${cb.dang_lam_viec ? '' : '<small>(đã ngừng theo dõi)</small>'}</td>`;
+    for (let d = 1; d <= soNgay; d++) h += `<td class="o lw-${loai[d]}" data-r="${r}" data-d="${d}"></td>`;
+    cotTong.forEach((_, i) => h += `<td class="tong${i ? '' : ' dau-tien'}" data-tong="${r}-${i}"></td>`);
+    h += '</tr>';
+  });
+  h += '</tbody><tfoot><tr><td class="c-stt"></td><td class="c-ten">Cộng</td>';
+  for (let d = 1; d <= soNgay; d++) h += `<td class="o lw-${loai[d]}" data-cong="${d}"></td>`;
+  cotTong.forEach((_, i) => h += `<td class="tong${i ? '' : ' dau-tien'}" data-tongcot="${i}"></td>`);
+  h += '</tr></tfoot></table>';
+  $('khungLuoi').innerHTML = h;
+
+  S.oEl = S.dsHien.map(() => []);
+  $('khungLuoi').querySelectorAll('td.o[data-r]').forEach(td => { S.oEl[+td.dataset.r][+td.dataset.d] = td; });
+  S.dsHien.forEach((_, r) => { for (let d = 1; d <= soNgay; d++) veO(r, d); });
+  veTong();
+  veChon();
+}
+
+function veO(r, d) {
+  const td = S.oEl[r] && S.oEl[r][d];
+  if (!td) return;
+  const cb = S.dsHien[r];
+  const o = S.cc.get(khoa(cb.id, iso(S.nam, S.thang, d)));
+  td.classList.remove('kh-ct', 'kh-phep', 'kh-bhxh', 'kh-khong', 'co-ghi');
+  if (S.tab === 'gio') {
+    td.textContent = hienGio(o);
+  } else {
+    const k = o && o.ky_hieu;
+    td.textContent = k || '';
+    const kh = k && KH_MAP.get(k);
+    if (kh && kh.lop) td.classList.add(kh.lop);
+    if (k === 'CT' && (o.noi_cong_tac || o.noi_dung_cong_tac)) td.classList.add('co-ghi');
+  }
+}
+
+function veTong() {
+  const y = S.nam, m = S.thang, soNgay = soNgayCua(y, m), gio = S.tab === 'gio';
+  const khung = $('khungLuoi');
+  const tongCot = [0, 0, 0, 0];
+  S.dsHien.forEach((cb, r) => {
+    const v = gio ? (t => [t.lam, t.nghi, t.le, t.dem])(tongGio(cb.id, y, m, S.cc, S.leNam))
+                  : (t => [t.luong, t.khong, t.bhxh])(tongCong(cb.id, y, m, S.cc));
+    v.forEach((x, i) => {
+      tongCot[i] += x;
+      const td = khung.querySelector(`[data-tong="${r}-${i}"]`);
+      if (td) td.textContent = gio ? dinhDangSo(x) : (x || '');
+    });
+  });
+  tongCot.forEach((x, i) => { const td = khung.querySelector(`[data-tongcot="${i}"]`); if (td) td.textContent = gio ? dinhDangSo(x) : (x || ''); });
+  for (let d = 1; d <= soNgay; d++) {
+    let n = 0;
+    S.dsHien.forEach(cb => {
+      const o = S.cc.get(khoa(cb.id, iso(y, m, d)));
+      if (!o) return;
+      if (gio) n += so(o.gio_them) + so(o.gio_dem);
+      else if (o.ky_hieu && KH_MAP.get(o.ky_hieu)?.nhom === 'luong') n++;
+    });
+    const td = khung.querySelector(`[data-cong="${d}"]`);
+    if (td) { td.textContent = gio ? dinhDangSo(n) : (n || ''); td.title = gio ? 'Tổng giờ làm thêm trong ngày' : 'Số người hưởng lương thời gian trong ngày'; }
+  }
+}
+
+/* ---------- Chọn ô ---------- */
+function chuanSel() {
+  const s = S.sel;
+  return {r0: Math.min(s.r0, s.r1), r1: Math.max(s.r0, s.r1), d0: Math.min(s.d0, s.d1), d1: Math.max(s.d0, s.d1)};
+}
+function cacOChon() {
+  if (!S.sel) return [];
+  const {r0, r1, d0, d1} = chuanSel(), kq = [];
+  for (let r = r0; r <= r1; r++) for (let d = d0; d <= d1; d++) kq.push([r, d]);
+  return kq;
+}
+function veChon() {
+  $('khungLuoi').querySelectorAll('td.o.chon, td.o.tieu-diem').forEach(td => td.classList.remove('chon', 'tieu-diem'));
+  if (!S.sel) { veThongTinO(); return; }
+  cacOChon().forEach(([r, d]) => S.oEl[r]?.[d]?.classList.add('chon'));
+  S.oEl[S.sel.r1]?.[S.sel.d1]?.classList.add('tieu-diem');
+  veThongTinO();
+}
+function chonO(r0, d0, r1 = r0, d1 = d0) {
+  dongSuaGio(true);
+  S.sel = {r0, d0, r1, d1};
+  veChon();
+}
+
+function veThongTinO() {
+  const el = $('thongTinO');
+  if (!S.sel) { el.textContent = ''; return; }
+  const ds = cacOChon();
+  if (ds.length > 1) {
+    el.textContent = `Đang chọn ${ds.length} ô.`;
+    return;
+  }
+  const [r, d] = ds[0];
+  const cb = S.dsHien[r];
+  const ngay = iso(S.nam, S.thang, d);
+  const o = S.cc.get(khoa(cb.id, ngay));
+  const le = S.leNam.get(ngay);
+  const loai = {lam: 'ngày làm việc', nghi: 'ngày nghỉ', le: 'ngày lễ, Tết'}[loaiNgay(S.nam, S.thang, d, S.leNam)];
+  let s = `<b>${esc(cb.ho_ten)}</b>, ${THU_DAY_DU[thuCua(S.nam, S.thang, d)]} ${pad(d)}/${pad(S.thang)}/${S.nam} (${loai}${le ? ': ' + esc(le.ten) : ''}).`;
+  if (S.tab === 'cong' && o && o.ky_hieu) {
+    s += ` Đã chấm: <b>${esc(o.ky_hieu)}</b> (${esc(KH_MAP.get(o.ky_hieu)?.ten || '')}).`;
+    if (o.ky_hieu === 'CT') {
+      s += o.noi_cong_tac || o.noi_dung_cong_tac
+        ? ` Công tác tại ${esc(o.noi_cong_tac || '...')}${o.noi_dung_cong_tac ? ': ' + esc(o.noi_dung_cong_tac) : ''}.`
+        : ' Chưa có ghi chú công tác.';
+      s += ' <button type="button" class="nut phu nho" id="nutSuaCT">Sửa ghi chú</button>';
+    }
+  }
+  if (S.tab === 'gio' && o && (so(o.gio_them) || so(o.gio_dem))) {
+    s += ` Làm thêm ${dinhDangSo(so(o.gio_them)) || 0} giờ${so(o.gio_dem) ? `, làm đêm ${dinhDangSo(so(o.gio_dem))} giờ` : ''}.`;
+  }
+  if (o && o.cap_nhat_boi) {
+    const t = new Date(o.cap_nhat_luc);
+    s += ` <span class="chu-nho">Sửa lần cuối: ${esc(o.cap_nhat_boi)}, ${t.toLocaleString('vi-VN')}.</span>`;
+  }
+  el.innerHTML = s;
+  const nut = $('nutSuaCT');
+  if (nut) nut.addEventListener('click', () => moGhiChuCT([khoa(cb.id, ngay)]));
+}
+
+// Chuột trên lưới
+const khungLuoi = $('khungLuoi');
+khungLuoi.addEventListener('mousedown', e => {
+  if (e.button !== 0) return;
+  if (e.target.closest('input.sua-gio')) return;
+  const td = e.target.closest('td.o[data-r]');
+  const thNgay = e.target.closest('th.ngay');
+  const tdTen = e.target.closest('td.c-ten[data-r]');
+  if (td) {
+    e.preventDefault();
+    const r = +td.dataset.r, d = +td.dataset.d;
+    if (e.shiftKey && S.sel) { S.sel.r1 = r; S.sel.d1 = d; dongSuaGio(true); veChon(); }
+    else chonO(r, d);
+    S.keo = true;
+  } else if (thNgay) {
+    e.preventDefault();
+    const d = +thNgay.dataset.d;
+    chonO(0, d, S.dsHien.length - 1, d);
+  } else if (tdTen) {
+    e.preventDefault();
+    const r = +tdTen.dataset.r;
+    chonO(r, 1, r, soNgayCua(S.nam, S.thang));
+  }
+});
+khungLuoi.addEventListener('mouseover', e => {
+  if (!S.keo || !S.sel) return;
+  const td = e.target.closest('td.o[data-r]');
+  if (!td) return;
+  const r = +td.dataset.r, d = +td.dataset.d;
+  if (r !== S.sel.r1 || d !== S.sel.d1) { S.sel.r1 = r; S.sel.d1 = d; veChon(); }
+});
+window.addEventListener('mouseup', () => { S.keo = false; });
+khungLuoi.addEventListener('dblclick', e => {
+  const td = e.target.closest('td.o[data-r]');
+  if (td && S.tab === 'gio') moSuaGio('');
+  if (td && S.tab === 'cong') {
+    const o = S.cc.get(khoa(S.dsHien[+td.dataset.r].id, iso(S.nam, S.thang, +td.dataset.d)));
+    if (o && o.ky_hieu === 'CT') moGhiChuCT([khoa(o.can_bo_id, o.ngay)]);
+  }
+});
+
+// Bàn phím
+document.addEventListener('keydown', e => {
+  if (!(S.tab === 'cong' || S.tab === 'gio') || $('ungDung').hidden) return;
+  if (document.querySelector('dialog[open]')) return;
+  const a = document.activeElement;
+  if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT')) return;
+  if (!S.sel || !S.dsHien.length) return;
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const soNgay = soNgayCua(S.nam, S.thang), soHang = S.dsHien.length;
+  const diChuyen = {ArrowUp: [-1, 0], ArrowDown: [1, 0], ArrowLeft: [0, -1], ArrowRight: [0, 1], Tab: [0, e.shiftKey ? -1 : 1]}[e.key];
+  if (diChuyen) {
+    e.preventDefault();
+    const r = Math.max(0, Math.min(soHang - 1, S.sel.r1 + diChuyen[0]));
+    const d = Math.max(1, Math.min(soNgay, S.sel.d1 + diChuyen[1]));
+    if (e.shiftKey && e.key !== 'Tab') { S.sel.r1 = r; S.sel.d1 = d; veChon(); }
+    else chonO(r, d);
+    S.oEl[r]?.[d]?.scrollIntoView({block: 'nearest', inline: 'nearest'});
+    return;
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); apKyHieu(null); return; }
+  if (S.tab === 'cong') {
+    const kh = KY_HIEU.find(x => x.phim && x.phim === e.key) || (e.key === '+' ? KH_MAP.get('+') : null);
+    if (kh) { e.preventDefault(); apKyHieu(kh.k); }
+  } else {
+    if (e.key === 'Enter' || e.key === 'F2') { e.preventDefault(); moSuaGio(''); }
+    else if (/^[0-9.,+]$/.test(e.key)) { e.preventDefault(); moSuaGio(e.key); }
+  }
+});
+
+/* ---------- Chấm ký hiệu ---------- */
+function layO(cb, d) {
+  const ngay = iso(S.nam, S.thang, d);
+  const k = khoa(cb.id, ngay);
+  let o = S.cc.get(k);
+  if (!o) { o = {can_bo_id: cb.id, ngay, ky_hieu: null, gio_them: 0, gio_dem: 0, noi_cong_tac: null, noi_dung_cong_tac: null}; S.cc.set(k, o); }
+  return o;
+}
+
+function apKyHieu(k) {
+  const ds = cacOChon();
+  if (!ds.length) return;
+  if (S.tab === 'gio') {
+    ds.forEach(([r, d]) => { const o = layO(S.dsHien[r], d); o.gio_them = 0; o.gio_dem = 0; choLuu(o); veO(r, d); });
+    veTong(); veThongTinO(); return;
+  }
+  const nhieu = ds.length > 1;
+  const ctMoi = [];
+  let boQua = 0;
+  ds.forEach(([r, d]) => {
+    if (nhieu && k && k !== 'CT' && loaiNgay(S.nam, S.thang, d, S.leNam) !== 'lam') { boQua++; return; }
+    const o = layO(S.dsHien[r], d);
+    if (o.ky_hieu === k) return;
+    o.ky_hieu = k;
+    if (k !== 'CT') { o.noi_cong_tac = null; o.noi_dung_cong_tac = null; }
+    else ctMoi.push(khoa(o.can_bo_id, o.ngay));
+    choLuu(o); veO(r, d);
+  });
+  veTong(); veThongTinO();
+  if (ds.length === 1 && S.sel) {
+    // chấm xong 1 ô thì tự sang ngày kế tiếp cho nhanh
+    const soNgay = soNgayCua(S.nam, S.thang);
+    if (S.sel.d1 < soNgay) chonO(S.sel.r1, S.sel.d1 + 1);
+  }
+  if (ctMoi.length) moGhiChuCT(ctMoi);
+}
+
+/* ---------- Ghi chú công tác ---------- */
+function moGhiChuCT(dsKhoa) {
+  S.ctCho = dsKhoa;
+  const dau = S.cc.get(dsKhoa[0]);
+  const cb = S.canBo.find(x => x.id === dau.can_bo_id);
+  const nguoi = new Set(dsKhoa.map(k => k.split('|')[0]));
+  $('ctMoTa').textContent = dsKhoa.length === 1
+    ? `${cb ? cb.ho_ten : ''}, ngày ${dau.ngay.split('-').reverse().join('/')}. Có thể để trống và ghi sau.`
+    : `Áp dụng cho ${dsKhoa.length} ô vừa chấm CT (${nguoi.size} người). Có thể để trống và ghi sau.`;
+  $('ctNoi').value = dau.noi_cong_tac || '';
+  $('ctNoiDung').value = dau.noi_dung_cong_tac || '';
+  $('dlgCT').showModal();
+  setTimeout(() => $('ctNoi').focus(), 30);
+}
+$('dlgCT').addEventListener('close', () => {
+  if ($('dlgCT').returnValue !== 'luu') return;
+  const noi = $('ctNoi').value.trim() || null, nd = $('ctNoiDung').value.trim() || null;
+  S.ctCho.forEach(k => {
+    const o = S.cc.get(k);
+    if (!o || o.ky_hieu !== 'CT') return;
+    o.noi_cong_tac = noi; o.noi_dung_cong_tac = nd; choLuu(o);
+  });
+  if (S.tab === 'cong') { S.dsHien.forEach((_, r) => { for (let d = 1; d <= soNgayCua(S.nam, S.thang); d++) veO(r, d); }); veThongTinO(); }
+  if (S.tab === 'ct') veCongTac();
+});
+
+/* ---------- Sửa giờ làm thêm ---------- */
+function moSuaGio(kyTuDau) {
+  if (!S.sel) return;
+  dongSuaGio(true);
+  const {r1: r, d1: d} = S.sel;
+  const td = S.oEl[r]?.[d];
+  if (!td) return;
+  const o = S.cc.get(khoa(S.dsHien[r].id, iso(S.nam, S.thang, d)));
+  const inp = document.createElement('input');
+  inp.className = 'sua-gio';
+  inp.value = kyTuDau !== '' ? kyTuDau : hienGio(o).replace('đ', '');
+  td.appendChild(inp);
+  inp.focus();
+  if (kyTuDau === '') inp.select();
+  S.dangSua = {inp, r, d};
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); if (ghiGio()) { const soHang = S.dsHien.length; if (cacOChon().length <= 1 && r < soHang - 1) chonO(r + 1, d); } }
+    else if (e.key === 'Escape') { e.preventDefault(); dongSuaGio(true); }
+    else if (e.key === 'Tab') { e.preventDefault(); if (ghiGio() && d < soNgayCua(S.nam, S.thang)) chonO(r, d + 1); }
+    e.stopPropagation();
+  });
+  inp.addEventListener('blur', () => setTimeout(() => { if (S.dangSua && S.dangSua.inp === inp) ghiGio(); }, 0));
+}
+function ghiGio() {
+  if (!S.dangSua) return true;
+  const g = docGio(S.dangSua.inp.value);
+  if (!g) { thongBao('Số giờ không hợp lệ. Ví dụ đúng: 2 hoặc 2,5 hoặc 2+3 (3 giờ làm đêm), tối đa 24 giờ.', true); S.dangSua.inp.focus(); return false; }
+  const ds = cacOChon().length > 1 ? cacOChon() : [[S.dangSua.r, S.dangSua.d]];
+  dongSuaGio(true);
+  ds.forEach(([r, d]) => { const o = layO(S.dsHien[r], d); o.gio_them = g.them; o.gio_dem = g.dem; choLuu(o); veO(r, d); });
+  veTong(); veThongTinO();
+  return true;
+}
+function dongSuaGio(boQua) {
+  if (!S.dangSua) return;
+  const {inp} = S.dangSua;
+  S.dangSua = null;
+  if (inp.parentNode) inp.remove();
+}
+
+/* ---------- Lưu ---------- */
+function choLuu(o) {
+  S.choLuu.set(khoa(o.can_bo_id, o.ngay), o);
+  datTrangThai('Đang lưu...');
+  clearTimeout(S.henLuu);
+  S.henLuu = setTimeout(luuNgay, 700);
+}
+async function luuNgay() {
+  clearTimeout(S.henLuu);
+  if (S.dangLuu) { S.henLuu = setTimeout(luuNgay, 400); return; }
+  if (!S.choLuu.size) return;
+  const ds = [...S.choLuu.values()];
+  S.choLuu.clear();
+  S.dangLuu = true;
+  const goi = ds.map(o => ({
+    can_bo_id: o.can_bo_id, ngay: o.ngay, ky_hieu: o.ky_hieu || null,
+    gio_them: so(o.gio_them), gio_dem: so(o.gio_dem),
+    noi_cong_tac: o.ky_hieu === 'CT' ? o.noi_cong_tac : null,
+    noi_dung_cong_tac: o.ky_hieu === 'CT' ? o.noi_dung_cong_tac : null,
+  }));
+  const {data, error} = await S.sb.from('cc_cham_cong').upsert(goi, {onConflict: 'can_bo_id,ngay'}).select('can_bo_id,ngay,cap_nhat_luc,cap_nhat_boi');
+  S.dangLuu = false;
+  if (error) {
+    ds.forEach(o => { const k = khoa(o.can_bo_id, o.ngay); if (!S.choLuu.has(k)) S.choLuu.set(k, o); });
+    datTrangThai('Chưa lưu được, đang thử lại...', true);
+    thongBao('Lỗi lưu dữ liệu: ' + error.message, true);
+    S.henLuu = setTimeout(luuNgay, 5000);
+    return;
+  }
+  (data || []).forEach(x => { const o = S.cc.get(khoa(x.can_bo_id, x.ngay)); if (o) { o.cap_nhat_luc = x.cap_nhat_luc; o.cap_nhat_boi = x.cap_nhat_boi; } });
+  if (S.choLuu.size) { S.henLuu = setTimeout(luuNgay, 300); return; }
+  const t = new Date();
+  datTrangThai(`Đã lưu lúc ${pad(t.getHours())}:${pad(t.getMinutes())}`);
+}
+function datTrangThai(s, loi = false) {
+  const el = $('trangThaiLuu');
+  el.textContent = s;
+  el.classList.toggle('loi-luu', loi);
+}
+window.addEventListener('beforeunload', e => { if (S.choLuu.size || S.dangLuu) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- Tab Công tác ---------- */
+function veCongTac() {
+  const dots = cacDotCongTac(S.dsHien, S.nam, S.thang, S.cc);
+  let h = `<div class="the"><h2>Cán bộ đi công tác tháng ${S.thang}/${S.nam}</h2>
+    <p class="mo-ta">Tự tổng hợp từ các ô chấm CT. Các ngày CT liền nhau, cùng nơi và nội dung được gộp thành một đợt. Bấm Sửa để ghi nơi và nội dung cho cả đợt.</p>`;
+  if (!dots.length) h += '<p class="chu-nho">Tháng này chưa có ai được chấm CT.</p>';
+  else {
+    h += '<div style="overflow-x:auto"><table class="bang"><thead><tr><th>STT</th><th>Họ và tên</th><th>Thời gian</th><th>Số ngày</th><th>Nơi công tác</th><th>Nội dung</th><th></th></tr></thead><tbody>';
+    dots.forEach((dt, i) => {
+      const tg = dt.tu === dt.den ? `${pad(dt.tu)}/${pad(S.thang)}` : `${pad(dt.tu)}/${pad(S.thang)} - ${pad(dt.den)}/${pad(S.thang)}`;
+      h += `<tr><td class="so">${i + 1}</td><td>${esc(dt.cb.ho_ten)}</td><td>${tg}</td><td class="so">${dt.den - dt.tu + 1}</td>
+        <td>${esc(dt.noi) || '<span class="chu-nho">Chưa ghi</span>'}</td><td>${esc(dt.nd) || '<span class="chu-nho">Chưa ghi</span>'}</td>
+        <td><button type="button" class="nut phu nho" data-sua-dot="${i}">Sửa</button></td></tr>`;
+    });
+    h += '</tbody></table></div>';
+  }
+  h += '</div>';
+  $('vungCT').innerHTML = h;
+  $('vungCT').querySelectorAll('[data-sua-dot]').forEach(b => b.addEventListener('click', () => {
+    const dt = dots[+b.dataset.suaDot];
+    const ds = [];
+    for (let d = dt.tu; d <= dt.den; d++) ds.push(khoa(dt.cb.id, iso(S.nam, S.thang, d)));
+    moGhiChuCT(ds);
+  }));
+}
+
+/* ---------- Tab Ngày lễ ---------- */
+function veNgayLe() {
+  const y = S.nam;
+  const ds = [...S.leNam.values()].sort((a, b) => a.ngay.localeCompare(b.ngay));
+  const tenLoai = {le: 'Nghỉ lễ, Tết', nghi_bu: 'Nghỉ hoán đổi, nghỉ bù', lam_bu: 'Đi làm bù'};
+  let h = `<div class="the"><h2>Ngày lễ, nghỉ bù năm ${y}</h2>
+    <p class="mo-ta">Các ngày lễ cố định (1/1, 30/4, 1/5, 2/9, 24/11) có sẵn. Mỗi năm cần thêm: các ngày nghỉ Tết Âm lịch, Giỗ Tổ Hùng Vương, ngày nghỉ liền kề Quốc khánh và các ngày hoán đổi theo thông báo của Chính phủ. Ngày "Đi làm bù" là thứ 7 hoặc Chủ nhật phải đi làm, được tính như ngày làm việc.</p>
+    <div class="luoi-form">
+      <div class="truong"><label for="leTu">Từ ngày</label><input id="leTu" type="date" min="${y}-01-01" max="${y}-12-31"></div>
+      <div class="truong"><label for="leDen">Đến ngày (nếu nhiều ngày)</label><input id="leDen" type="date" min="${y}-01-01" max="${y}-12-31"></div>
+      <div class="truong rong-2"><label for="leTen">Tên ngày nghỉ</label><input id="leTen" type="text" maxlength="120" placeholder="Ví dụ: Tết Nguyên đán"></div>
+      <div class="truong"><label for="leLoai">Loại</label><select id="leLoai"><option value="le">Nghỉ lễ, Tết</option><option value="nghi_bu">Nghỉ hoán đổi, nghỉ bù</option><option value="lam_bu">Đi làm bù</option></select></div>
+      <div class="truong"><button type="button" class="nut chinh" id="nutThemLe">Thêm ngày</button></div>
+    </div></div>
+    <div class="the"><table class="bang"><thead><tr><th>Ngày</th><th>Thứ</th><th>Tên</th><th>Loại</th><th></th></tr></thead><tbody>`;
+  ds.forEach(x => {
+    const [yy, mm, dd] = x.ngay.split('-').map(Number);
+    h += `<tr><td>${pad(dd)}/${pad(mm)}/${yy}</td><td>${THU_DAY_DU[thuCua(yy, mm, dd)]}</td><td>${esc(x.ten)}</td>
+      <td><span class="nhan-loai ${x.loai}">${tenLoai[x.loai]}</span></td>
+      <td>${x.coDinh ? '<span class="chu-nho">Cố định</span>' : `<button type="button" class="nut xoa nho" data-xoa-le="${x.ngay}">Xóa</button>`}</td></tr>`;
+  });
+  h += '</tbody></table></div>';
+  $('vungLe').innerHTML = h;
+
+  $('nutThemLe').addEventListener('click', async () => {
+    const tu = $('leTu').value, den = $('leDen').value || tu, ten = $('leTen').value.trim(), loai = $('leLoai').value;
+    if (!tu || !ten) return thongBao('Nhập ngày và tên ngày nghỉ.', true);
+    if (den < tu) return thongBao('"Đến ngày" phải sau "Từ ngày".', true);
+    const dong = [];
+    for (let t = new Date(tu + 'T00:00:00'); ; t.setDate(t.getDate() + 1)) {
+      const s = iso(t.getFullYear(), t.getMonth() + 1, t.getDate());
+      if (s > den) break;
+      dong.push({ngay: s, ten, loai});
+      if (dong.length > 31) return thongBao('Mỗi lần thêm tối đa 31 ngày.', true);
+    }
+    const {error} = await S.sb.from('cc_ngay_le').upsert(dong, {onConflict: 'ngay'});
+    if (error) return thongBao('Không thêm được: ' + error.message, true);
+    thongBao(`Đã thêm ${dong.length} ngày.`);
+    await taiNgayLe(S.nam); veNgayLe();
+  });
+  $('vungLe').querySelectorAll('[data-xoa-le]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Xóa ngày ' + b.dataset.xoaLe.split('-').reverse().join('/') + ' khỏi danh sách?')) return;
+    const {error} = await S.sb.from('cc_ngay_le').delete().eq('ngay', b.dataset.xoaLe);
+    if (error) return thongBao('Không xóa được: ' + error.message, true);
+    thongBao('Đã xóa.');
+    await taiNgayLe(S.nam); veNgayLe();
+  }));
+}
+
+/* ---------- Tab Cán bộ (quản trị) ---------- */
+function veCanBo() {
+  if (!laQuanTri()) { $('vungCanBo').innerHTML = ''; return; }
+  let h = `<div class="the"><h2>Thêm cán bộ</h2>
+    <div class="luoi-form">
+      <div class="truong"><label for="cbStt">Số thứ tự</label><input id="cbStt" type="number" min="1" value="${(S.canBo.reduce((a, x) => Math.max(a, x.stt), 0) || 0) + 1}"></div>
+      <div class="truong rong-2"><label for="cbTen">Họ và tên</label><input id="cbTen" type="text" maxlength="100"></div>
+      <div class="truong rong-2"><label for="cbChucVu">Chức vụ</label><input id="cbChucVu" type="text" maxlength="150"></div>
+      <div class="truong"><button type="button" class="nut chinh" id="nutThemCB">Thêm cán bộ</button></div>
+    </div></div>
+    <div class="the"><h2>Danh sách cán bộ (${S.canBo.length} người)</h2>
+    <p class="mo-ta">Thứ tự trên bảng chấm công xếp theo số thứ tự. Cán bộ chuyển công tác hoặc nghỉ hưu thì bỏ dấu "Theo dõi": dữ liệu cũ vẫn giữ, từ tháng sau không hiện trên bảng nữa.</p>
+    <div style="overflow-x:auto"><table class="bang"><thead><tr><th style="width:80px">STT</th><th>Họ và tên</th><th>Chức vụ</th><th style="width:80px">Theo dõi</th><th style="width:150px"></th></tr></thead><tbody>`;
+  S.canBo.forEach(cb => {
+    h += `<tr data-cb="${cb.id}" class="${cb.dang_lam_viec ? '' : 'ngung'}">
+      <td><input type="number" min="1" data-f="stt" value="${cb.stt}"></td>
+      <td><input type="text" data-f="ho_ten" value="${esc(cb.ho_ten)}"></td>
+      <td><input type="text" data-f="chuc_vu" value="${esc(cb.chuc_vu || '')}"></td>
+      <td class="so"><input type="checkbox" data-f="dang_lam_viec" ${cb.dang_lam_viec ? 'checked' : ''} aria-label="Theo dõi chấm công"></td>
+      <td><div class="hang-nut" style="margin:0"><button type="button" class="nut chinh nho" data-luu-cb disabled>Lưu</button><button type="button" class="nut xoa nho" data-xoa-cb>Xóa</button></div></td></tr>`;
+  });
+  h += '</tbody></table></div></div>';
+  $('vungCanBo').innerHTML = h;
+
+  $('nutThemCB').addEventListener('click', async () => {
+    const ten = $('cbTen').value.trim();
+    if (!ten) return thongBao('Nhập họ và tên.', true);
+    const {error} = await S.sb.from('cc_can_bo').insert({stt: +$('cbStt').value || 999, ho_ten: ten, chuc_vu: $('cbChucVu').value.trim() || null});
+    if (error) return thongBao('Không thêm được: ' + error.message, true);
+    thongBao('Đã thêm ' + ten + '.');
+    await taiCanBo(); await taiThang(); S.tab = 'canbo'; veTab();
+  });
+  $('vungCanBo').querySelectorAll('tr[data-cb]').forEach(tr => {
+    const nut = tr.querySelector('[data-luu-cb]');
+    tr.querySelectorAll('input').forEach(i => i.addEventListener('input', () => { nut.disabled = false; tr.classList.add('da-sua'); }));
+    nut.addEventListener('click', async () => {
+      const g = {};
+      tr.querySelectorAll('[data-f]').forEach(i => g[i.dataset.f] = i.type === 'checkbox' ? i.checked : (i.type === 'number' ? +i.value || 999 : i.value.trim()));
+      if (!g.ho_ten) return thongBao('Họ và tên không được để trống.', true);
+      const {error} = await S.sb.from('cc_can_bo').update(g).eq('id', +tr.dataset.cb);
+      if (error) return thongBao('Không lưu được: ' + error.message, true);
+      thongBao('Đã lưu.');
+      await taiCanBo(); await taiThang(); S.tab = 'canbo'; veTab();
+    });
+    tr.querySelector('[data-xoa-cb]').addEventListener('click', async () => {
+      const cb = S.canBo.find(x => x.id === +tr.dataset.cb);
+      if (!confirm(`Xóa hẳn ${cb.ho_ten}? Toàn bộ dữ liệu chấm công của người này (mọi tháng) cũng bị xóa.\n\nNếu cán bộ chỉ chuyển công tác, hãy bỏ dấu "Theo dõi" thay vì xóa.`)) return;
+      const {error} = await S.sb.from('cc_can_bo').delete().eq('id', cb.id);
+      if (error) return thongBao('Không xóa được: ' + error.message, true);
+      thongBao('Đã xóa.');
+      await taiCanBo(); await taiThang(); S.tab = 'canbo'; veTab();
+    });
+  });
+}
+
+/* ---------- Tab Cài đặt (quản trị) ---------- */
+const TRUONG_CAI_DAT = [
+  ['ten_don_vi', 'Đơn vị'], ['bo_phan', 'Bộ phận'], ['ma_qhns', 'Mã QHNS'], ['dia_danh', 'Địa danh ghi ở chân bảng'],
+  ['nguoi_cham_cong', 'Người chấm công'], ['ten_phu_trach', 'Phụ trách bộ phận (bảng chấm công ngày)'],
+  ['ten_xac_nhan', 'Xác nhận của bộ phận có người làm thêm'], ['ten_thu_truong', 'Thủ trưởng đơn vị'],
+];
+async function veCaiDat() {
+  if (!laQuanTri()) { $('vungCaiDat').innerHTML = ''; return; }
+  const {data: nd, error} = await S.sb.from('cc_nguoi_dung').select('*').order('created_at');
+  let h = `<div class="hai-cot"><div class="the"><h2>Thông tin in trên bảng chấm công</h2>
+    <p class="mo-ta">Ô nào để trống thì in trống, ký tay. Khi xuất Excel vẫn sửa lại được tên người ký cho từng tháng.</p>`;
+  TRUONG_CAI_DAT.forEach(([k, nhan]) => {
+    h += `<div class="truong"><label for="cd_${k}">${nhan}</label><input id="cd_${k}" type="text" value="${esc(S.caiDat[k] || '')}"></div>`;
+  });
+  h += `<button type="button" class="nut chinh" id="nutLuuCaiDat">Lưu cài đặt</button></div>
+    <div class="the"><h2>Tài khoản được dùng phần mềm</h2>
+    <p class="mo-ta">Bước 1: tạo tài khoản ở Supabase, mục Authentication &gt; Users &gt; Add user (tích Auto Confirm). Bước 2: thêm đúng email đó vào đây. Tài khoản không có trong danh sách này không xem được dữ liệu chấm công.</p>`;
+  if (error) h += `<p class="loi">Không tải được: ${esc(error.message)}</p>`;
+  h += '<table class="bang"><thead><tr><th>Email</th><th>Họ tên</th><th>Vai trò</th><th></th></tr></thead><tbody>';
+  (nd || []).forEach(u => {
+    const minh = u.email.toLowerCase() === S.email.toLowerCase();
+    h += `<tr><td>${esc(u.email)}</td><td>${esc(u.ho_ten || '')}</td><td>${u.vai_tro === 'quan_tri' ? 'Quản trị' : 'Chấm công'}</td>
+      <td>${minh ? '<span class="chu-nho">Bạn</span>' : `<button type="button" class="nut xoa nho" data-xoa-nd="${esc(u.email)}">Gỡ quyền</button>`}</td></tr>`;
+  });
+  h += `</tbody></table>
+    <div class="luoi-form" style="margin-top:14px">
+      <div class="truong rong-2"><label for="ndEmail">Email</label><input id="ndEmail" type="email"></div>
+      <div class="truong"><label for="ndTen">Họ tên</label><input id="ndTen" type="text"></div>
+      <div class="truong"><label for="ndVaiTro">Vai trò</label><select id="ndVaiTro"><option value="cham_cong">Chấm công</option><option value="quan_tri">Quản trị</option></select></div>
+      <div class="truong"><button type="button" class="nut chinh" id="nutThemND">Cấp quyền</button></div>
+    </div></div></div>`;
+  $('vungCaiDat').innerHTML = h;
+
+  $('nutLuuCaiDat').addEventListener('click', async () => {
+    const dong = TRUONG_CAI_DAT.map(([k]) => ({khoa: k, gia_tri: $('cd_' + k).value.trim()}));
+    const {error} = await S.sb.from('cc_cai_dat').upsert(dong, {onConflict: 'khoa'});
+    if (error) return thongBao('Không lưu được: ' + error.message, true);
+    await taiCaiDat();
+    thongBao('Đã lưu cài đặt.');
+  });
+  $('nutThemND').addEventListener('click', async () => {
+    const email = $('ndEmail').value.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return thongBao('Email không hợp lệ.', true);
+    const {error} = await S.sb.from('cc_nguoi_dung').upsert({email, ho_ten: $('ndTen').value.trim() || null, vai_tro: $('ndVaiTro').value}, {onConflict: 'email'});
+    if (error) return thongBao('Không cấp quyền được: ' + error.message, true);
+    thongBao('Đã cấp quyền cho ' + email + '.');
+    veCaiDat();
+  });
+  $('vungCaiDat').querySelectorAll('[data-xoa-nd]').forEach(b => b.addEventListener('click', async () => {
+    if (!confirm('Gỡ quyền dùng phần mềm chấm công của ' + b.dataset.xoaNd + '?')) return;
+    const {error} = await S.sb.from('cc_nguoi_dung').delete().eq('email', b.dataset.xoaNd);
+    if (error) return thongBao('Không gỡ được: ' + error.message, true);
+    thongBao('Đã gỡ quyền.');
+    veCaiDat();
+  }));
+}
+
+/* ---------- Xuất Excel ---------- */
+$('btnXuat').addEventListener('click', async () => {
+  if (S.choLuu.size) await luuNgay();
+  $('xuatMoTa').textContent = `File gồm 3 trang: bảng chấm công (mẫu C01-HD), bảng chấm công làm thêm giờ (mẫu C09-HD) và tổng hợp công tác tháng ${S.thang}/${S.nam}.`;
+  const cuoiThang = iso(S.nam, S.thang, soNgayCua(S.nam, S.thang));
+  const homNayIso = iso(homNay.getFullYear(), homNay.getMonth() + 1, homNay.getDate());
+  $('xNgayKy').value = homNayIso < cuoiThang ? homNayIso : cuoiThang;
+  $('xPhuTrach').value = S.caiDat.ten_phu_trach || '';
+  $('xXacNhan').value = S.caiDat.ten_xac_nhan || '';
+  $('xThuTruong').value = S.caiDat.ten_thu_truong || '';
+  $('dlgXuat').showModal();
+});
+$('dlgXuat').addEventListener('close', async () => {
+  if ($('dlgXuat').returnValue !== 'xuat') return;
+  if (!window.ExcelJS) return thongBao('Chưa tải được thư viện Excel. Kiểm tra mạng rồi tải lại trang.', true);
+  try {
+    const buf = await taoFileExcel(window.ExcelJS, {
+      nam: S.nam, thang: S.thang, canBo: S.dsHien, cc: S.cc, leMap: S.leNam, caiDat: S.caiDat,
+      ky: {ngayKy: $('xNgayKy').value, phuTrach: $('xPhuTrach').value.trim(), xacNhan: $('xXacNhan').value.trim(), thuTruong: $('xThuTruong').value.trim()},
+    });
+    const blob = new Blob([buf], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `ChamCong_T${pad(S.thang)}_${S.nam}.xlsx`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    thongBao('Đã tạo file Excel.');
+  } catch (err) {
+    console.error(err);
+    thongBao('Không tạo được file Excel: ' + err.message, true);
+  }
+});
+
+khoiDong();
+</script>
+</body>
+</html>
