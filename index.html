@@ -678,8 +678,6 @@ const MUC_CHI = [
   ['don_gia_km', 'Tự túc phương tiện (đ/km)', 2000],
   ['lit_moi_km', 'Định mức xăng (lít/km)', 0.2],
   ['gia_xang', 'Giá xăng mặc định (đ/lít, để 0 thì nhập từng đợt)', 0],
-  ['khoan_thang', 'Khoán công tác phí tháng (đ/người/tháng)', 500000],
-  ['tien_an_ngay', 'Tiền ăn người hưởng khoán (đ/ngày)', 20000],
 ];
 const DIA_BAN = {
   tw: 'TP trực thuộc Trung ương, đô thị loại 1', tinh: 'Tỉnh khác',
@@ -755,14 +753,13 @@ function gomDotCongTac(cacO) {
 }
 
 // dot: {dia_ban, trong_ngay, khoang_cach_km, xe_co_quan}; rec: dữ liệu nhập của 1 người (null = tự tính)
-function tinhNguoiCTP(dot, rec, laLanhDao, soNgay, muc, coKhoan) {
+function tinhNguoiCTP(dot, rec, laLanhDao, soNgay, muc) {
   rec = rec || {};
   const coGT = v => v !== null && v !== undefined && v !== '';
   const db = dot.dia_ban || 'xa';
   const km1 = so(dot.khoang_cach_km);
   const ngoaiTinh = db === 'tw' || db === 'tinh';
-  const luuAuto = coKhoan ? 0
-    : dot.trong_ngay ? (km1 > 10 ? muc.luu_tru_trong_ngay * soNgay : 0)
+  const luuAuto = dot.trong_ngay ? (km1 > 10 ? muc.luu_tru_trong_ngay * soNgay : 0)
     : soNgay * (ngoaiTinh ? muc.luu_tru_ngoai : muc.luu_tru_trong);
   const luu = coGT(rec.luu_tru) ? so(rec.luu_tru) : luuAuto;
 
@@ -830,7 +827,7 @@ function docSoTien(n) {
   return chu.charAt(0).toUpperCase() + chu.slice(1) + (n % 1000 === 0 ? ' đồng chẵn./.' : ' đồng./.');
 }
 
-// Xuất bảng kê C17-HD.  D = {nam, thang, caiDat, ky:{ngayKy, thuTruong}, tongHop:[...], cacDot:[{ten, tieuDe1, tieuDe2, dong}], khoan:[...]}
+// Xuất bảng kê C17-HD.  D = {nam, thang, caiDat, ky:{ngayKy, thuTruong}, tongHop:[...], cacDot:[{ten, tieuDe1, tieuDe2, dong}]}
 async function taoFileCongTacPhi(ExcelJS, D) {
   const {caiDat: cd, ky} = D;
   const wb = new ExcelJS.Workbook();
@@ -913,10 +910,6 @@ async function taoFileCongTacPhi(ExcelJS, D) {
 
   sheetC17(`Tổng hợp T${D.thang}`, null, `Tháng ${D.thang} năm ${D.nam}`, 'Đơn vị', D.tongHop);
   D.cacDot.forEach(dt => sheetC17(dt.ten, dt.tieuDe1, dt.tieuDe2, 'Chức vụ', dt.dong));
-  if (D.khoan && D.khoan.length) {
-    sheetC17(`Khoán tháng T${D.thang}`, 'Khoán công tác phí tháng đối với cán bộ thường xuyên đi công tác',
-      `Tháng ${D.thang} năm ${D.nam}`, 'Chức vụ', D.khoan);
-  }
   return wb.xlsx.writeBuffer();
 }
 /* ==== HET LOGIC CHUNG ==== */
@@ -950,7 +943,6 @@ const S = {
   cacDot: [],
   dotDb: [],
   dotNguoi: new Map(),
-  khoan: new Map(),
   dotMo: null,
   ctpSanSang: true,
 };
@@ -1562,8 +1554,6 @@ async function taiCongTac() {
       S.dotNguoi.get(x.dot_id).set(x.can_bo_id, x);
     });
   }
-  const r3 = S.ctpSanSang ? await S.sb.from('cc_khoan_thang').select('*').eq('thang', `${y}-${pad(m)}`) : {data: []};
-  S.khoan = new Map((r3.data || []).map(x => [x.can_bo_id, x]));
 
   S.cacDot = gomDotCongTac(S.ctRong.values()).filter(d => d.den >= dauThang && d.den <= cuoiThang);
   S.cacDot.forEach(d => {
@@ -1593,24 +1583,10 @@ async function moTabCongTac() {
 function tinhDot(d, muc) {
   const dong = d.thanhVien.map(tv => {
     const cb = S.canBo.find(x => x.id === tv.cbId) || {id: tv.cbId, ho_ten: '(cán bộ đã xóa)', stt: 9999};
-    const r = tinhNguoiCTP(d.nhap, d.nhap.nguoi.get(tv.cbId), !!cb.muc_lanh_dao, tv.soNgay, muc, S.khoan.has(tv.cbId));
+    const r = tinhNguoiCTP(d.nhap, d.nhap.nguoi.get(tv.cbId), !!cb.muc_lanh_dao, tv.soNgay, muc);
     return {cb, tv, r, rec: d.nhap.nguoi.get(tv.cbId) || {}};
   }).sort((a, b) => (a.cb.stt || 999) - (b.cb.stt || 999) || a.cb.ho_ten.localeCompare(b.cb.ho_ten, 'vi'));
   return {dong, tong: dong.reduce((s, x) => s + x.r.cong, 0)};
-}
-
-function soNgayCTTrongThang(cbId) {
-  let n = 0;
-  for (let d = 1; d <= soNgayCua(S.nam, S.thang); d++) {
-    const o = S.cc.get(khoa(cbId, iso(S.nam, S.thang, d)));
-    if (o && o.ky_hieu === 'CT' && loaiNgay(S.nam, S.thang, d, S.leNam) === 'lam') n++;
-  }
-  return n;
-}
-function tienKhoan(cbId, muc) {
-  const k = S.khoan.get(cbId);
-  const ngay = k && k.so_ngay_an !== null && k.so_ngay_an !== undefined ? k.so_ngay_an : soNgayCTTrongThang(cbId);
-  return {ngay, tien: muc.khoan_thang + ngay * muc.tien_an_ngay};
 }
 
 function veCongTac() {
@@ -1647,7 +1623,6 @@ function veCongTac() {
     </div>`;
   });
   if (S.cacDot.length) h += `<p class="tong-thang">Tổng công tác phí các đợt trong tháng: <b>${tien(tongThang)} đ</b></p>`;
-  h += veKhoan(muc);
   $('vungCT').innerHTML = h;
   ganSuKienCongTac();
 }
@@ -1667,7 +1642,7 @@ function veSuaDot(d, kq) {
       <th>Họ và tên</th><th>Số ngày</th><th>Phụ cấp lưu trú</th><th>Phòng nghỉ</th><th>Tiền vé</th>
       <th>Phương tiện</th><th>Đã tạm ứng</th><th class="so">Cộng</th><th class="so">Còn nhận</th></tr></thead><tbody>`;
   kq.dong.forEach(({cb, tv, r, rec}) => {
-    const ghiChu = [cb.chuc_vu, cb.muc_lanh_dao ? 'mức lãnh đạo' : '', S.khoan.has(cb.id) ? 'hưởng khoán tháng' : ''].filter(Boolean).join(', ');
+    const ghiChu = [cb.chuc_vu, cb.muc_lanh_dao ? 'mức lãnh đạo' : ''].filter(Boolean).join(', ');
     const ngayTV = tv.tu === tv.den ? vnNgay(tv.tu).slice(0, 5) : `${vnNgay(tv.tu).slice(0, 5)} - ${vnNgay(tv.den).slice(0, 5)}`;
     let phong = `<select data-n="hinh_thuc_phong">${opt(r.hinh, {khoan: 'Khoán', hoa_don: 'Theo hóa đơn', khong: 'Không'})}</select>`;
     if (r.hinh !== 'khong') {
@@ -1702,26 +1677,6 @@ function veSuaDot(d, kq) {
     <span class="chu-nho">Lưu trú: ngoài tỉnh, trong tỉnh tính theo số ngày CT (cả ngày nghỉ trong lịch trình); đi về trong ngày chỉ tính khi khoảng cách trên 10 km. Phòng khoán tính theo số đêm.</span></div>
   </div>`;
   return h;
-}
-
-function veKhoan(muc) {
-  const ung = new Set([...S.khoan.keys()]);
-  for (const o of S.cc.values()) if (o.ky_hieu === 'CT') ung.add(o.can_bo_id);
-  const ds = [...ung].map(id => S.canBo.find(x => x.id === id)).filter(Boolean)
-    .sort((a, b) => (a.stt || 999) - (b.stt || 999));
-  let h = `<div class="the"><h2>Khoán công tác phí tháng ${S.thang}/${S.nam}</h2>
-    <p class="mo-ta">Tích chọn cán bộ thường xuyên đi công tác (trên 10 ngày/tháng hoặc đợt dài liên tục) được hưởng khoán ${tien(muc.khoan_thang)} đ/tháng và tiền ăn ${tien(muc.tien_an_ngay)} đ/ngày. Người hưởng khoán không tính phụ cấp lưu trú theo từng đợt, vẫn được thanh toán tiền phòng, tiền vé, tiền phương tiện. Số ngày tiền ăn tự đếm theo ngày làm việc có chấm CT, sửa được.</p>`;
-  if (!ds.length) return h + '<p class="chu-nho">Tháng này chưa có ai đi công tác.</p></div>';
-  h += '<div class="cuon-ngang"><table class="bang"><thead><tr><th style="width:70px">Khoán</th><th>Họ và tên</th><th class="so">Ngày CT làm việc</th><th style="width:140px">Số ngày tiền ăn</th><th class="so">Thành tiền</th></tr></thead><tbody>';
-  ds.forEach(cb => {
-    const co = S.khoan.has(cb.id), k = S.khoan.get(cb.id), tk = tienKhoan(cb.id, muc);
-    h += `<tr><td class="so"><input type="checkbox" data-khoan="${cb.id}"${co ? ' checked' : ''} aria-label="Hưởng khoán tháng"${S.ctpSanSang ? '' : ' disabled'}></td>
-      <td>${esc(cb.ho_ten)}<div class="chu-nho">${esc(cb.chuc_vu || '')}</div></td>
-      <td class="so">${soNgayCTTrongThang(cb.id)}</td>
-      <td>${co ? `<input type="text" inputmode="numeric" data-khoan-ngay="${cb.id}" value="${k.so_ngay_an ?? ''}" placeholder="${soNgayCTTrongThang(cb.id)}" style="border:1px solid var(--ke-dam);background:#fff">` : ''}</td>
-      <td class="so">${co ? `<b>${tien(tk.tien)}</b>` : ''}</td></tr>`;
-  });
-  return h + '</tbody></table></div></div>';
 }
 
 let henVeLai = null;
@@ -1777,23 +1732,6 @@ function ganSuKienCongTac() {
       veCongTac();
     });
   });
-  vung.querySelectorAll('[data-khoan]').forEach(el => el.addEventListener('change', async () => {
-    const id = +el.dataset.khoan, thang = `${S.nam}-${pad(S.thang)}`;
-    const {error} = el.checked
-      ? await S.sb.from('cc_khoan_thang').upsert({thang, can_bo_id: id}, {onConflict: 'thang,can_bo_id'})
-      : await S.sb.from('cc_khoan_thang').delete().eq('thang', thang).eq('can_bo_id', id);
-    if (error) return thongBao('Không lưu được: ' + error.message, true);
-    if (el.checked) S.khoan.set(id, {thang, can_bo_id: id, so_ngay_an: null}); else S.khoan.delete(id);
-    veCongTac();
-  }));
-  vung.querySelectorAll('[data-khoan-ngay]').forEach(el => el.addEventListener('change', async () => {
-    const id = +el.dataset.khoanNgay, thang = `${S.nam}-${pad(S.thang)}`;
-    const v = String(el.value).trim() === '' ? null : (parseInt(String(el.value).replace(/\D/g, ''), 10) || 0);
-    const {error} = await S.sb.from('cc_khoan_thang').update({so_ngay_an: v}).eq('thang', thang).eq('can_bo_id', id);
-    if (error) return thongBao('Không lưu được: ' + error.message, true);
-    S.khoan.get(id).so_ngay_an = v;
-    veCongTac();
-  }));
 }
 
 async function luuDot(d) {
@@ -1829,7 +1767,7 @@ async function luuDot(d) {
 function moXuatCTP() {
   const chuaLuu = S.cacDot.filter(d => !d.nhap.id || d.daSua).length;
   $('ctpMoTa').textContent = `Gồm 1 trang tổng hợp tháng ${S.thang}/${S.nam}, ${S.cacDot.length} trang theo từng đợt` +
-    (S.khoan.size ? ' và 1 trang khoán công tác phí tháng.' : '.') +
+    '.' +
     (chuaLuu ? ` Lưu ý: ${chuaLuu} đợt chưa bấm Lưu, file vẫn xuất theo số đang hiện trên màn hình.` : '');
   const cuoiThang = iso(S.nam, S.thang, soNgayCua(S.nam, S.thang));
   const homNayIso = iso(homNay.getFullYear(), homNay.getMonth() + 1, homNay.getDate());
@@ -1857,18 +1795,11 @@ $('dlgCTP').addEventListener('close', async () => {
     });
     return {ten: `Đợt ${i + 1} ${d.noi || ''}`, tieuDe1: `Công tác tại ${d.noi || '...'}${d.nd ? ` (${d.nd})` : ''}`, tieuDe2: khoangNgay(d.tu, d.den), dong};
   });
-  const khoan = [...S.khoan.keys()].map(id => S.canBo.find(x => x.id === id)).filter(Boolean)
-    .sort((a, b) => (a.stt || 999) - (b.stt || 999)).map(cb => {
-      const t = tienKhoan(cb.id, muc).tien;
-      const x = {ho_ten: cb.ho_ten, cotC: cb.chuc_vu || '', ve: 0, pt: 0, luu: t, phong: 0, cong: t, tamUng: 0, nopTra: 0, conNhan: t};
-      cong(cb, x);
-      return x;
-    });
   try {
     const buf = await taoFileCongTacPhi(window.ExcelJS, {
       nam: S.nam, thang: S.thang, caiDat: S.caiDat,
       ky: {ngayKy: $('ctpNgayKy').value, thuTruong: $('ctpThuTruong').value.trim()},
-      tongHop: [...tongHop.values()].sort((a, b) => a.stt - b.stt), cacDot, khoan,
+      tongHop: [...tongHop.values()].sort((a, b) => a.stt - b.stt), cacDot,
     });
     const blob = new Blob([buf], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const a = document.createElement('a');
